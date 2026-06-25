@@ -1,0 +1,462 @@
+name: OHG coverage and lightweight acquisition v2
+
+on:
+  workflow_dispatch:
+    inputs:
+      max_cells:
+        description: "Cells per run (1-36; default 24)"
+        required: false
+        default: "24"
+        type: string
+      automation_action:
+        description: "no_change | enable | disable"
+        required: false
+        default: "no_change"
+        type: choice
+        options: [no_change, enable, disable]
+      lightweight_action:
+        description: "no_change | approve | hold"
+        required: false
+        default: "no_change"
+        type: choice
+        options: [no_change, approve, hold]
+  schedule:
+    - cron: "17 * * * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ohg-coverage-lightweight-v2
+  cancel-in-progress: false
+
+jobs:
+  controller:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+
+    steps:
+      - name: Checkout latest main
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install runtime packages
+        run: python -m pip install --upgrade pip && pip install requests pillow
+
+      - name: Run coverage audit or lightweight acquisition
+        env:
+          MAX_CELLS: ${{ inputs.max_cells || '24' }}
+          AUTOMATION_ACTION: ${{ inputs.automation_action || 'no_change' }}
+          LIGHTWEIGHT_ACTION: ${{ inputs.lightweight_action || 'no_change' }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          cat > /tmp/ohg_v2.py <<'PY'
+          #!/usr/bin/env python3
+          """OHG v2: coverage first; only bounded lightweight previews are retained.
+
+          The v1 scan-cell ledger supplies the planned geometry. This controller never
+          commits raw source tiles or native-resolution mosaics. Candidate high-resolution
+          work is represented only by a separate request ledger and policy file.
+          """
+          from __future__ import annotations
+          import csv, hashlib, io, json, math, os, time
+          from datetime import datetime, timezone
+          from pathlib import Path
+          from typing import Dict, List, Tuple
+
+          import requests
+          from PIL import Image, ImageDraw, ImageFont
+
+          ROOT = Path('data/ohg')
+          CONTROL = ROOT / 'control'
+          PREVIEWS = ROOT / 'previews' / 'ort_riku10' / 'z17'
+          AUDIT = ROOT / 'audit'
+          HIGHRES = ROOT / 'highres'
+          CELL_LEDGER = CONTROL / 'OHG_scan_cell_ledger_z17.csv'
+          COVERAGE_LEDGER = CONTROL / 'OHG_cell_coverage_ledger_z17_v2.csv'
+          TILE_LEDGER = CONTROL / 'OHG_tile_coverage_ledger_z17_v2.csv'
+          STATE_PATH = CONTROL / 'OHG_v2_state.json'
+          REPORT_PATH = CONTROL / 'OHG_v2_capacity_and_coverage_report.json'
+          SCOPE_REGISTRY = CONTROL / 'OHG_scope_registry_operational_v1.csv'
+
+          Z = 17
+          CELL_TILES = 4
+          SOURCE_LAYER = 'ort_riku10'
+          SOURCE_TEMPLATE = 'https://cyberjapandata.gsi.go.jp/xyz/ort_riku10/{z}/{x}/{y}.png'
+          SOURCE_NAME = '国土地理院 地理院タイル 空中写真（1936年〜1942年頃） ort_riku10'
+          MAX_PREVIEW_BYTES = 180 * 1024
+          MAX_PREVIEW_TOTAL_BYTES = 280 * 1024 * 1024
+          PREVIEW_MAX_PX = 768
+          REQUEST_DELAY_SECONDS = 0.12
+          MAX_TRANSIENT_ATTEMPTS = 3
+
+          CELL_FIELDS = [
+              'scan_cell_id','z','x0','y0','cell_tiles','bbox_wgs84','scope_unit_codes','scope_unit_count',
+              'coverage_status','coverage_attempt_count','coverage_checked_utc','coverage_note',
+              'preview_status','preview_relpath','preview_sha256','preview_bytes','preview_generated_utc',
+              'highres_request_status'
+          ]
+          TILE_FIELDS = [
+              'scan_cell_id','z','x','y','tile_url','http_status','tile_status','response_sha256',
+              'checked_utc','attempt_count','failure_reason'
+          ]
+          HIGHRES_FIELDS = [
+              'highres_request_id','visual_lead_id','scan_cell_id','requested_bbox_wgs84','requested_zoom',
+              'context_tiles','source_layer','request_reason','request_status','archive_backend',
+              'archive_locator','archive_sha256','source_tile_manifest_relpath','created_utc','completed_utc',
+              'publication_status','notes'
+          ]
+
+          def utc_now() -> str:
+              return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace('+00:00','Z')
+
+          def sha256(blob: bytes) -> str:
+              return hashlib.sha256(blob).hexdigest()
+
+          def read_csv(path: Path) -> List[dict]:
+              if not path.exists():
+                  return []
+              with path.open('r', encoding='utf-8-sig', newline='') as f:
+                  return list(csv.DictReader(f))
+
+          def write_csv(path: Path, rows: List[dict], fields: List[str]) -> None:
+              path.parent.mkdir(parents=True, exist_ok=True)
+              tmp = path.with_suffix(path.suffix + '.tmp')
+              with tmp.open('w', encoding='utf-8', newline='') as f:
+                  writer = csv.DictWriter(f, fieldnames=fields, extrasaction='ignore')
+                  writer.writeheader()
+                  for row in rows:
+                      writer.writerow({k: row.get(k,'') for k in fields})
+              tmp.replace(path)
+
+          def read_json(path: Path, default):
+              if not path.exists():
+                  return default
+              return json.loads(path.read_text(encoding='utf-8'))
+
+          def write_json(path: Path, obj) -> None:
+              path.parent.mkdir(parents=True, exist_ok=True)
+              tmp = path.with_suffix(path.suffix + '.tmp')
+              tmp.write_text(json.dumps(obj, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+              tmp.replace(path)
+
+          def file_tree_bytes(path: Path) -> int:
+              if not path.exists():
+                  return 0
+              return sum(p.stat().st_size for p in path.rglob('*') if p.is_file())
+
+          def valid_image(blob: bytes) -> Tuple[bool,str]:
+              try:
+                  with Image.open(io.BytesIO(blob)) as im:
+                      im.verify()
+                  return True, ''
+              except Exception as exc:
+                  return False, f'{type(exc).__name__}: {exc}'
+
+          def fetch_tile(session: requests.Session, x: int, y: int) -> dict:
+              url = SOURCE_TEMPLATE.format(z=Z,x=x,y=y)
+              now = utc_now()
+              try:
+                  r = session.get(url, timeout=20)
+                  code = r.status_code
+                  blob = r.content
+                  if code == 404:
+                      return {'tile_url':url,'http_status':str(code),'tile_status':'no_source_coverage','response_sha256':'','checked_utc':now,'failure_reason':'HTTP 404','blob':None}
+                  if 500 <= code <= 599:
+                      return {'tile_url':url,'http_status':str(code),'tile_status':'transient_error','response_sha256':'','checked_utc':now,'failure_reason':f'HTTP {code}','blob':None}
+                  if code != 200:
+                      return {'tile_url':url,'http_status':str(code),'tile_status':'transient_error','response_sha256':'','checked_utc':now,'failure_reason':f'HTTP {code}','blob':None}
+                  ok, reason = valid_image(blob)
+                  if not ok:
+                      return {'tile_url':url,'http_status':str(code),'tile_status':'transient_error','response_sha256':'','checked_utc':now,'failure_reason':'invalid_image '+reason,'blob':None}
+                  with Image.open(io.BytesIO(blob)) as im:
+                      if im.size != (256,256):
+                          return {'tile_url':url,'http_status':str(code),'tile_status':'transient_error','response_sha256':'','checked_utc':now,'failure_reason':f'unexpected_dimensions {im.size}','blob':None}
+                  return {'tile_url':url,'http_status':str(code),'tile_status':'available','response_sha256':sha256(blob),'checked_utc':now,'failure_reason':'','blob':blob}
+              except requests.RequestException as exc:
+                  return {'tile_url':url,'http_status':'','tile_status':'transient_error','response_sha256':'','checked_utc':now,'failure_reason':f'{type(exc).__name__}: {exc}','blob':None}
+
+          def normalize_cell_rows() -> List[dict]:
+              if not CELL_LEDGER.exists():
+                  raise RuntimeError('Missing v1 geometry ledger: data/ohg/control/OHG_scan_cell_ledger_z17.csv. Do not recreate scope geometry here.')
+              base = read_csv(CELL_LEDGER)
+              old = {r['scan_cell_id']:r for r in read_csv(COVERAGE_LEDGER) if r.get('scan_cell_id')}
+              out=[]
+              for r in base:
+                  cid=r['scan_cell_id']
+                  prior=old.get(cid,{})
+                  out.append({
+                      'scan_cell_id':cid,'z':str(r.get('z',Z)),'x0':str(r['x0']),'y0':str(r['y0']),
+                      'cell_tiles':str(r.get('cell_tiles',CELL_TILES)),'bbox_wgs84':r.get('bbox_wgs84',''),
+                      'scope_unit_codes':r.get('scope_unit_codes',''),'scope_unit_count':r.get('scope_unit_count',''),
+                      'coverage_status':prior.get('coverage_status','pending'),
+                      'coverage_attempt_count':prior.get('coverage_attempt_count','0'),
+                      'coverage_checked_utc':prior.get('coverage_checked_utc',''),
+                      'coverage_note':prior.get('coverage_note',''),
+                      'preview_status':prior.get('preview_status','not_started'),
+                      'preview_relpath':prior.get('preview_relpath',''),
+                      'preview_sha256':prior.get('preview_sha256',''),
+                      'preview_bytes':prior.get('preview_bytes',''),
+                      'preview_generated_utc':prior.get('preview_generated_utc',''),
+                      'highres_request_status':prior.get('highres_request_status','not_requested')
+                  })
+              return out
+
+          def initialize_highres_ledgers() -> None:
+              HIGHRES.mkdir(parents=True, exist_ok=True)
+              request_path = HIGHRES / 'OHG_highres_request_ledger.csv'
+              if not request_path.exists():
+                  write_csv(request_path, [], HIGHRES_FIELDS)
+              policy_path = HIGHRES / 'OHG_highres_archive_policy_v1.json'
+              if not policy_path.exists():
+                  write_json(policy_path, {
+                      'policy_version':'1.0',
+                      'purpose':'Candidate-only high-resolution retrieval and archive control.',
+                      'main_repository_policy':'No raw source tiles or native-resolution candidate mosaics are committed to normal Git history.',
+                      'archive_backend':'private GitHub Release asset, or an explicitly selected private external archive.',
+                      'privacy_gate':'Do not upload candidate high-resolution packages to a public repository.',
+                      'candidate_package_contents':['high-resolution mosaic','source-tile manifest with URLs and SHA256','provenance JSON','SHA256SUMS'],
+                      'request_lifecycle':['not_requested','requested','approved','packaged','archived','verified','blocked'],
+                      'note':'This file is a policy and queue definition only. It contains no candidate image.'
+                  })
+
+          def update_state(action: str, lw_action: str) -> dict:
+              state=read_json(STATE_PATH, {
+                  'schema_version':'2.0','automation_enabled':False,'lightweight_approved':False,
+                  'created_utc':utc_now(),'last_run_utc':'','phase':'coverage_audit'
+              })
+              if action == 'enable': state['automation_enabled']=True
+              if action == 'disable': state['automation_enabled']=False
+              if lw_action == 'approve': state['lightweight_approved']=True
+              if lw_action == 'hold': state['lightweight_approved']=False
+              return state
+
+          def classify_cell(tile_results: List[dict]) -> Tuple[str,str]:
+              statuses=[r['tile_status'] for r in tile_results]
+              avail=statuses.count('available')
+              none=statuses.count('no_source_coverage')
+              transient=statuses.count('transient_error')
+              if transient:
+                  return 'transient_error', f'available={avail}; no_source={none}; transient={transient}'
+              if avail == len(tile_results):
+                  return 'coverage_full', f'available={avail}/{len(tile_results)}'
+              if avail == 0 and none == len(tile_results):
+                  return 'no_source_coverage', f'no_source={none}/{len(tile_results)}'
+              return 'coverage_partial', f'available={avail}; no_source={none}; total={len(tile_results)}'
+
+          def probe_cells(rows: List[dict], limit: int) -> Tuple[int,List[dict]]:
+              pending=[]
+              for row in rows:
+                  status=row['coverage_status']
+                  attempts=int(row.get('coverage_attempt_count') or 0)
+                  if status == 'pending' or (status == 'transient_error' and attempts < MAX_TRANSIENT_ATTEMPTS):
+                      pending.append(row)
+              pending.sort(key=lambda r:(int(r['y0']),int(r['x0'])))
+              selected=pending[:limit]
+              if not selected:
+                  return 0, []
+              old_tile={ (r['scan_cell_id'],r['x'],r['y']):r for r in read_csv(TILE_LEDGER) if r.get('scan_cell_id') }
+              session=requests.Session()
+              session.headers.update({'User-Agent':'OHG-HistoricalAirphoto-Research/2.0 coverage-audit; bounded; source-attribution-retained'})
+              processed=[]
+              for row in selected:
+                  x0,y0=int(row['x0']),int(row['y0'])
+                  results=[]
+                  for y in range(y0,y0+CELL_TILES):
+                      for x in range(x0,x0+CELL_TILES):
+                          result=fetch_tile(session,x,y)
+                          key=(row['scan_cell_id'],str(x),str(y))
+                          prior=old_tile.get(key,{})
+                          result.update({'scan_cell_id':row['scan_cell_id'],'z':str(Z),'x':str(x),'y':str(y),'attempt_count':str(int(prior.get('attempt_count') or 0)+1)})
+                          old_tile[key]=result
+                          results.append(result)
+                          time.sleep(REQUEST_DELAY_SECONDS)
+                  status,note=classify_cell(results)
+                  row['coverage_status']=status
+                  row['coverage_note']=note
+                  row['coverage_checked_utc']=utc_now()
+                  row['coverage_attempt_count']=str(int(row.get('coverage_attempt_count') or 0)+1)
+                  processed.append((row,results))
+              serial=[]
+              for r in old_tile.values():
+                  r2={k:v for k,v in r.items() if k!='blob'}
+                  serial.append(r2)
+              serial.sort(key=lambda r:(r['scan_cell_id'],int(r['y']),int(r['x'])))
+              write_csv(TILE_LEDGER, serial, TILE_FIELDS)
+              return len(selected), processed
+
+          def adaptive_webp(canvas: Image.Image) -> bytes:
+              img=canvas.copy()
+              if max(img.size)>PREVIEW_MAX_PX:
+                  ratio=PREVIEW_MAX_PX/max(img.size)
+                  img=img.resize((max(1,round(img.width*ratio)),max(1,round(img.height*ratio))),Image.Resampling.LANCZOS)
+              for quality in (60,52,44,36):
+                  buf=io.BytesIO(); img.save(buf,format='WEBP',quality=quality,method=6)
+                  if buf.tell() <= MAX_PREVIEW_BYTES:
+                      return buf.getvalue()
+              if max(img.size)>640:
+                  ratio=640/max(img.size)
+                  img=img.resize((max(1,round(img.width*ratio)),max(1,round(img.height*ratio))),Image.Resampling.LANCZOS)
+              buf=io.BytesIO(); img.save(buf,format='WEBP',quality=38,method=6)
+              return buf.getvalue()
+
+          def build_preview_for_row(row:dict, existing_total:int) -> Tuple[bool,str,int,str]:
+              if row['coverage_status'] not in ('coverage_full','coverage_partial'):
+                  return False,'coverage_not_eligible',0,''
+              if row['preview_status']=='complete' and row['preview_relpath'] and (ROOT/row['preview_relpath']).exists():
+                  return False,'already_complete',0,''
+              x0,y0=int(row['x0']),int(row['y0'])
+              session=requests.Session(); session.headers.update({'User-Agent':'OHG-HistoricalAirphoto-Research/2.0 lightweight-preview; bounded; source-attribution-retained'})
+              canvas=Image.new('RGB',(CELL_TILES*256,CELL_TILES*256),'white')
+              actual=0
+              source_rows=[]
+              for y in range(y0,y0+CELL_TILES):
+                  for x in range(x0,x0+CELL_TILES):
+                      result=fetch_tile(session,x,y)
+                      if result['tile_status']=='available':
+                          with Image.open(io.BytesIO(result['blob'])) as im:
+                              canvas.paste(im.convert('RGB'),((x-x0)*256,(y-y0)*256))
+                          actual+=1
+                      source_rows.append(result)
+                      time.sleep(REQUEST_DELAY_SECONDS)
+              if row['coverage_status']=='coverage_full' and actual != 16:
+                  row['coverage_status']='transient_error'; row['coverage_note']=f'preview_fetch_inconsistent available={actual}/16'
+                  return False,'inconsistent_recheck_needed',0,''
+              payload=adaptive_webp(canvas)
+              if existing_total + len(payload) > MAX_PREVIEW_TOTAL_BYTES:
+                  row['preview_status']='budget_hold'
+                  row['coverage_note']=(row.get('coverage_note','')+'; preview budget cap reached').strip('; ')
+                  return False,'budget_hold',0,''
+              rel=Path('previews')/'ort_riku10'/'z17'/f"{row['scan_cell_id']}.webp"
+              target=ROOT/rel; target.parent.mkdir(parents=True,exist_ok=True); target.write_bytes(payload)
+              row['preview_status']='complete'; row['preview_relpath']=str(rel).replace('\\','/')
+              row['preview_sha256']=sha256(payload); row['preview_bytes']=str(len(payload)); row['preview_generated_utc']=utc_now()
+              return True,'saved',len(payload),str(rel)
+
+          def make_overview(rows:List[dict]) -> None:
+              if not rows: return
+              xs=sorted({int(r['x0']) for r in rows}); ys=sorted({int(r['y0']) for r in rows})
+              xi={x:i for i,x in enumerate(xs)}; yi={y:i for i,y in enumerate(ys)}
+              cell=32; pad=16; head=70
+              w=len(xs)*cell+pad*2; h=len(ys)*cell+head+pad
+              im=Image.new('RGB',(w,h),'white'); d=ImageDraw.Draw(im); font=ImageFont.load_default()
+              d.text((pad,8),'OHG v2 coverage / lightweight audit overview (z17 scan cells)',fill='black',font=font)
+              d.text((pad,25),'black=preview saved; gray=source unavailable; white=not yet checked; outline=partial; cross=transient/budget hold',fill='black',font=font)
+              counts={}
+              for r in rows:
+                  x=pad+xi[int(r['x0'])]*cell; y=head+yi[int(r['y0'])]*cell
+                  cov=r['coverage_status']; prev=r['preview_status']; key=(cov,prev); counts[key]=counts.get(key,0)+1
+                  if prev=='complete' and r.get('preview_relpath') and (ROOT/r['preview_relpath']).exists():
+                      try:
+                          thumb=Image.open(ROOT/r['preview_relpath']).convert('RGB'); thumb.thumbnail((cell,cell))
+                          im.paste(thumb,(x+(cell-thumb.width)//2,y+(cell-thumb.height)//2))
+                      except Exception:
+                          d.rectangle([x,y,x+cell,y+cell],fill='black')
+                  elif cov=='no_source_coverage':
+                      d.rectangle([x,y,x+cell,y+cell],fill='lightgray')
+                  elif cov=='coverage_partial':
+                      d.rectangle([x,y,x+cell,y+cell],fill='white',outline='black',width=1)
+                  elif cov=='transient_error' or prev=='budget_hold':
+                      d.rectangle([x,y,x+cell,y+cell],fill='white',outline='gray',width=1); d.line([x,y,x+cell,y+cell],fill='gray'); d.line([x+cell,y,x,y+cell],fill='gray')
+                  else:
+                      d.rectangle([x,y,x+cell,y+cell],fill='white',outline='lightgray')
+              AUDIT.mkdir(parents=True,exist_ok=True)
+              im.save(AUDIT/'OHG_v2_coverage_lightweight_overview_z17_lowres.jpg',quality=70,optimize=True)
+              summary=[{'coverage_status':k[0],'preview_status':k[1],'cell_count':v} for k,v in sorted(counts.items())]
+              write_csv(AUDIT/'OHG_v2_coverage_lightweight_overview_status.csv',summary,['coverage_status','preview_status','cell_count'])
+
+          def main():
+              max_cells=max(1,min(36,int(os.environ.get('MAX_CELLS','24') or 24)))
+              event=os.environ.get('EVENT_NAME','workflow_dispatch')
+              action=os.environ.get('AUTOMATION_ACTION','no_change')
+              lw_action=os.environ.get('LIGHTWEIGHT_ACTION','no_change')
+              if event=='schedule': action='no_change'; lw_action='no_change'
+              initialize_highres_ledgers()
+              rows=normalize_cell_rows()
+              state=update_state(action,lw_action)
+              if event=='schedule' and not state.get('automation_enabled',False):
+                  state.update({'last_run_utc':utc_now(),'phase':'paused','last_message':'Scheduled run exited: automation is disabled.'})
+                  write_csv(COVERAGE_LEDGER,rows,CELL_FIELDS); write_json(STATE_PATH,state)
+                  print(json.dumps(state,ensure_ascii=False)); return
+
+              processed=0; preview_saved=0; preview_bytes=0
+              coverage_remaining=[r for r in rows if r['coverage_status']=='pending' or (r['coverage_status']=='transient_error' and int(r.get('coverage_attempt_count') or 0)<MAX_TRANSIENT_ATTEMPTS)]
+              if coverage_remaining:
+                  state['phase']='coverage_audit'
+                  processed,_=probe_cells(rows,max_cells)
+              else:
+                  state['phase']='await_lightweight_approval' if not state.get('lightweight_approved',False) else 'lightweight_acquisition'
+                  if state.get('lightweight_approved',False):
+                      existing=file_tree_bytes(PREVIEWS)
+                      eligible=[r for r in rows if r['coverage_status'] in ('coverage_full','coverage_partial') and r['preview_status'] not in ('complete','budget_hold')]
+                      eligible.sort(key=lambda r:(int(r['y0']),int(r['x0'])))
+                      for row in eligible[:max_cells]:
+                          ok,msg,added,_=build_preview_for_row(row,existing+preview_bytes)
+                          if ok:
+                              preview_saved+=1; preview_bytes+=added
+                          elif msg=='budget_hold':
+                              break
+              write_csv(COVERAGE_LEDGER,rows,CELL_FIELDS)
+              make_overview(rows)
+              counts={}
+              for r in rows: counts[r['coverage_status']]=counts.get(r['coverage_status'],0)+1
+              preview_counts={}
+              for r in rows: preview_counts[r['preview_status']]=preview_counts.get(r['preview_status'],0)+1
+              eligible=sum(1 for r in rows if r['coverage_status'] in ('coverage_full','coverage_partial'))
+              existing_preview_bytes=file_tree_bytes(PREVIEWS)
+              legacy_bytes=file_tree_bytes(ROOT/'mosaics')
+              unit_count=len(read_csv(SCOPE_REGISTRY)) if SCOPE_REGISTRY.exists() else None
+              report={
+                  'generated_utc':utc_now(),'schema_version':'2.0','source_layer':SOURCE_LAYER,'source_name':SOURCE_NAME,
+                  'scope_unit_count_observed':unit_count,'scan_cell_count':len(rows),'coverage_counts':counts,'preview_counts':preview_counts,
+                  'coverage_cells_remaining':sum(1 for r in rows if r['coverage_status']=='pending' or (r['coverage_status']=='transient_error' and int(r.get('coverage_attempt_count') or 0)<MAX_TRANSIENT_ATTEMPTS)),
+                  'coverage_eligible_cells':eligible,'preview_max_bytes_per_cell':MAX_PREVIEW_BYTES,
+                  'preview_total_budget_bytes':MAX_PREVIEW_TOTAL_BYTES,'preview_worktree_bytes':existing_preview_bytes,
+                  'legacy_v1_mosaic_worktree_bytes':legacy_bytes,
+                  'conservative_preview_projection_bytes':eligible*MAX_PREVIEW_BYTES,
+                  'raw_source_tile_storage_policy':'not retained in normal Git history',
+                  'highres_policy_relpath':'highres/OHG_highres_archive_policy_v1.json',
+                  'highres_request_ledger_relpath':'highres/OHG_highres_request_ledger.csv',
+                  'automation_enabled':state.get('automation_enabled',False),'lightweight_approved':state.get('lightweight_approved',False),
+                  'phase':state.get('phase'),'processed_coverage_cells_this_run':processed,'saved_previews_this_run':preview_saved,
+                  'saved_preview_bytes_this_run':preview_bytes,
+                  'note':'Coverage is tested before previews are saved. 404 results become no_source_coverage and are not retried; only transient_error is retried, up to the stated limit.'
+              }
+              if unit_count != 50:
+                  report['scope_registry_warning']='Expected 50 operational units; investigate before interpreting coverage as complete.'
+              write_json(REPORT_PATH,report)
+              state.update({'last_run_utc':utc_now(),'last_message':f"phase={state['phase']}; coverage_processed={processed}; previews_saved={preview_saved}"})
+              write_json(STATE_PATH,state)
+              print(json.dumps(report,ensure_ascii=False,indent=2))
+
+          if __name__=='__main__':
+              main()
+          PY
+          python /tmp/ohg_v2.py
+
+      - name: Commit controller outputs safely
+        run: |
+          git config user.name "ohg-research-bot"
+          git config user.email "ohg-research-bot@users.noreply.github.com"
+          git add data/ohg/
+          if git diff --cached --quiet; then
+            echo "No output changes to commit."
+            exit 0
+          fi
+          git commit -m "ohg: coverage/lightweight controller v2 update"
+          for attempt in 1 2 3; do
+            if git pull --rebase origin main && git push origin HEAD:main; then
+              echo "Committed and pushed."
+              exit 0
+            fi
+            git rebase --abort || true
+            sleep $((attempt * 3))
+          done
+          echo "Could not safely push after three attempts; no remote history was overwritten."
+          exit 1
