@@ -1,0 +1,32 @@
+{
+  "run_id": "SSM-T01E",
+  "generated_utc": "2026-06-25T14:39:12Z",
+  "grid_ids": [
+    "SSM-B001-G08",
+    "SSM-B001-G11"
+  ],
+  "max_new_tiles": 18,
+  "new_network_attempts": 10,
+  "events": 21,
+  "mosaics": [
+    {
+      "grid_id": "SSM-B001-G08",
+      "mosaic_status": "complete",
+      "mosaic_relpath": "mosaics/ort_riku10/SSM-B001-G08_z18.png",
+      "mosaic_sha256": "33dcad6d6372bfb4b01126066de11b6cdf5d5acf699355a0ce494618e847c698",
+      "missing_tiles": "",
+      "run_id": "SSM-T01E",
+      "updated_utc": "2026-06-25T14:39:11Z"
+    },
+    {
+      "grid_id": "SSM-B001-G11",
+      "mosaic_status": "complete",
+      "mosaic_relpath": "mosaics/ort_riku10/SSM-B001-G11_z18.png",
+      "mosaic_sha256": "4f15c883449d9f1ed0d7fdc6f8475fafb4631ce82283bac115e0432ea33a11f1",
+      "missing_tiles": "",
+      "run_id": "SSM-T01E",
+      "updated_utc": "2026-06-25T14:39:12Z"
+    }
+  ],
+  "note": "Acquisition only. This file makes no visual, historical, or social interpretation."
+}

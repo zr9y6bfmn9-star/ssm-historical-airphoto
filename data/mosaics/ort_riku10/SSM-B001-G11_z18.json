@@ -1,0 +1,22 @@
+{
+  "grid_id": "SSM-B001-G11",
+  "block_id": "SSM-B001",
+  "source_id": "S007",
+  "source_layer": "ort_riku10",
+  "bbox_wgs84": [
+    135.515167,
+    34.5955,
+    135.517833,
+    34.598125
+  ],
+  "zoom": 18,
+  "pixel_dimensions": [
+    498,
+    596
+  ],
+  "image_relpath": "mosaics/ort_riku10/SSM-B001-G11_z18.png",
+  "sha256": "4f15c883449d9f1ed0d7fdc6f8475fafb4631ce82283bac115e0432ea33a11f1",
+  "generated_utc": "2026-06-25T14:39:12Z",
+  "scope_status": "provisional_scope_needs_geographic_verification",
+  "method": "Exact WGS84 bbox assembled from retained XYZ source tiles; no resampling beyond source tile assembly."
+}
