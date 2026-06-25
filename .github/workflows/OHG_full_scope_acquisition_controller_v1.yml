@@ -1,0 +1,384 @@
+name: OHG full-scope acquisition controller
+
+on:
+  workflow_dispatch:
+    inputs:
+      max_cells:
+        description: "Completed 4x4-tile scan cells this run (1-36; default 24)"
+        required: false
+        default: "24"
+        type: string
+  schedule:
+    - cron: "17 * * * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ohg-full-scope-acquisition
+  cancel-in-progress: false
+
+jobs:
+  acquire:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout latest main
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install runtime packages
+        run: python -m pip install --upgrade pip && pip install requests pillow shapely pyproj
+
+      - name: Fetch operational geometry input only when bootstrap is needed
+        run: |
+          if [ ! -f data/ohg/control/OHG_scan_cell_ledger_z17.csv ]; then
+            mkdir -p /tmp/ohg_geometry
+            git clone --depth=1 https://github.com/niiyz/JapanCityGeoJson.git /tmp/ohg_geometry/JapanCityGeoJson
+          else
+            echo "Existing OHG queue found; geometry bootstrap is skipped."
+          fi
+
+      - name: Write controller runtime
+        run: |
+          cat > /tmp/ohg_controller.py <<'__CONTROLLER__'
+          #!/usr/bin/env python3
+          from __future__ import annotations
+          import csv, hashlib, io, json, math, os, sys, time
+          from datetime import datetime, timezone
+          from pathlib import Path
+          from typing import Dict, List, Tuple
+
+          import requests
+          from PIL import Image, ImageDraw, ImageFont
+          from pyproj import Transformer
+          from shapely.geometry import box, mapping, shape
+          from shapely.ops import transform as geom_transform, unary_union
+
+          ROOT = Path('data/ohg')
+          CONTROL = ROOT / 'control'
+          MOSAICS = ROOT / 'mosaics' / 'ort_riku10' / 'z17'
+          AUDIT = ROOT / 'audit'
+          TMP = Path('/tmp/ohg_geometry')
+          SCOPE = [{"code": "27102", "name": "大阪市都島区", "level": "ward"}, {"code": "27103", "name": "大阪市福島区", "level": "ward"}, {"code": "27104", "name": "大阪市此花区", "level": "ward"}, {"code": "27106", "name": "大阪市中央区", "level": "ward"}, {"code": "27107", "name": "大阪市西区", "level": "ward"}, {"code": "27108", "name": "大阪市港区", "level": "ward"}, {"code": "27109", "name": "大阪市大正区", "level": "ward"}, {"code": "27111", "name": "大阪市天王寺区", "level": "ward"}, {"code": "27113", "name": "大阪市浪速区", "level": "ward"}, {"code": "27114", "name": "大阪市西淀川区", "level": "ward"}, {"code": "27115", "name": "大阪市淀川区", "level": "ward"}, {"code": "27116", "name": "大阪市東淀川区", "level": "ward"}, {"code": "27117", "name": "大阪市東成区", "level": "ward"}, {"code": "27118", "name": "大阪市生野区", "level": "ward"}, {"code": "27119", "name": "大阪市旭区", "level": "ward"}, {"code": "27120", "name": "大阪市城東区", "level": "ward"}, {"code": "27121", "name": "大阪市阿倍野区", "level": "ward"}, {"code": "27122", "name": "大阪市住之江区", "level": "ward"}, {"code": "27123", "name": "大阪市住吉区", "level": "ward"}, {"code": "27124", "name": "大阪市東住吉区", "level": "ward"}, {"code": "27125", "name": "大阪市平野区", "level": "ward"}, {"code": "27126", "name": "大阪市西成区", "level": "ward"}, {"code": "27127", "name": "大阪市北区", "level": "ward"}, {"code": "27128", "name": "大阪市鶴見区", "level": "ward"}, {"code": "27141", "name": "堺市堺区", "level": "ward"}, {"code": "27142", "name": "堺市中区", "level": "ward"}, {"code": "27143", "name": "堺市東区", "level": "ward"}, {"code": "27144", "name": "堺市西区", "level": "ward"}, {"code": "27145", "name": "堺市南区", "level": "ward"}, {"code": "27146", "name": "堺市北区", "level": "ward"}, {"code": "27147", "name": "堺市美原区", "level": "ward"}, {"code": "27217", "name": "松原市", "level": "municipality"}, {"code": "27222", "name": "羽曳野市", "level": "municipality"}, {"code": "27214", "name": "富田林市", "level": "municipality"}, {"code": "27206", "name": "泉大津市", "level": "municipality"}, {"code": "27231", "name": "大阪狭山市", "level": "municipality"}, {"code": "27226", "name": "藤井寺市", "level": "municipality"}, {"code": "27212", "name": "八尾市", "level": "municipality"}, {"code": "27221", "name": "柏原市", "level": "municipality"}, {"code": "27381", "name": "太子町", "level": "municipality"}, {"code": "27383", "name": "千早赤阪村", "level": "municipality"}, {"code": "27382", "name": "河南町", "level": "municipality"}, {"code": "27216", "name": "河内長野市", "level": "municipality"}, {"code": "27227", "name": "東大阪市", "level": "municipality"}, {"code": "27209", "name": "守口市", "level": "municipality"}, {"code": "27223", "name": "門真市", "level": "municipality"}, {"code": "27215", "name": "寝屋川市", "level": "municipality"}, {"code": "27205", "name": "吹田市", "level": "municipality"}, {"code": "27220", "name": "箕面市", "level": "municipality"}, {"code": "27322", "name": "能勢町", "level": "municipality"}]
+          Z = 17
+          CELL_TILES = 4
+          CONTEXT_BUFFER_M = 750
+          SOURCE_TEMPLATE = 'https://cyberjapandata.gsi.go.jp/xyz/ort_riku10/{z}/{x}/{y}.png'
+          SOURCE_NAME = '国土地理院 地理院タイル 空中写真（1936年〜1942年頃） ort_riku10'
+          GEOMETRY_SOURCE = 'niiyz/JapanCityGeoJson (N03 2020-derived)'
+
+
+          def utc_now():
+              return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace('+00:00','Z')
+
+          def sha256(blob: bytes):
+              return hashlib.sha256(blob).hexdigest()
+
+          def write_json(path: Path, obj):
+              path.parent.mkdir(parents=True, exist_ok=True)
+              tmp = path.with_suffix(path.suffix + '.tmp')
+              tmp.write_text(json.dumps(obj, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+              tmp.replace(path)
+
+          def write_csv(path: Path, rows: List[dict], fields: List[str]):
+              path.parent.mkdir(parents=True, exist_ok=True)
+              tmp = path.with_suffix(path.suffix + '.tmp')
+              with tmp.open('w', encoding='utf-8', newline='') as f:
+                  w = csv.DictWriter(f, fieldnames=fields, extrasaction='ignore')
+                  w.writeheader(); w.writerows(rows)
+              tmp.replace(path)
+
+          def read_csv(path: Path):
+              if not path.exists(): return []
+              with path.open('r', encoding='utf-8-sig', newline='') as f:
+                  return list(csv.DictReader(f))
+
+          def lonlat_tile(lon, lat, z=Z):
+              lat = max(min(lat, 85.05112878), -85.05112878)
+              n = 2 ** z
+              x = (lon + 180.0) / 360.0 * n
+              r = math.radians(lat)
+              y = (1.0 - math.asinh(math.tan(r))/math.pi) / 2.0 * n
+              return x, y
+
+          def tile_lonlat(x, y, z=Z):
+              n = 2 ** z
+              lon = x / n * 360.0 - 180.0
+              lat = math.degrees(math.atan(math.sinh(math.pi * (1 - 2*y/n))))
+              return lon, lat
+
+          def tile_geom(x, y):
+              west, north = tile_lonlat(x, y)
+              east, south = tile_lonlat(x+1, y+1)
+              return box(west, south, east, north)
+
+          def cell_bbox(x0, y0):
+              west, north = tile_lonlat(x0, y0)
+              east, south = tile_lonlat(x0 + CELL_TILES, y0 + CELL_TILES)
+              return (west, south, east, north)
+
+          def cell_id(x0, y0):
+              return f'OHG-Z{Z}-X{x0}-Y{y0}'
+
+          def is_valid_png_bytes(blob):
+              try:
+                  with Image.open(io.BytesIO(blob)) as im:
+                      im.verify()
+                  return True
+              except Exception:
+                  return False
+
+          def extract_geometry(payload):
+              if payload.get('type') == 'Feature':
+                  return shape(payload['geometry'])
+              if payload.get('type') == 'FeatureCollection':
+                  geoms = [shape(f['geometry']) for f in payload.get('features', []) if f.get('geometry')]
+                  return unary_union(geoms)
+              if 'coordinates' in payload:
+                  return shape(payload)
+              raise ValueError('Unsupported GeoJSON root')
+
+          def meter_buffer(geom, metres):
+              to_m = Transformer.from_crs('EPSG:4326','EPSG:3857',always_xy=True).transform
+              to_ll = Transformer.from_crs('EPSG:3857','EPSG:4326',always_xy=True).transform
+              return geom_transform(to_ll, geom_transform(to_m, geom).buffer(metres))
+
+          def bootstrap():
+              src = TMP / 'JapanCityGeoJson' / 'geojson' / '27'
+              if not src.exists():
+                  raise RuntimeError('Operational geometry repository was not cloned into /tmp/ohg_geometry/JapanCityGeoJson')
+              unit_geoms = {}
+              unit_rows = []
+              errors = []
+              for item in SCOPE:
+                  code, name, level = item['code'], item['name'], item['level']
+                  fp = src / f'{code}.json'
+                  if not fp.exists():
+                      errors.append({'code':code,'name':name,'error':'missing_geometry_file','path':str(fp)})
+                      continue
+                  try:
+                      payload = json.loads(fp.read_text(encoding='utf-8'))
+                      geom = extract_geometry(payload)
+                      if geom.is_empty:
+                          raise ValueError('empty geometry')
+                      buffered = meter_buffer(geom, CONTEXT_BUFFER_M)
+                      unit_geoms[code] = buffered
+                      unit_rows.append({
+                          'scope_unit_id': f'OHG-ADM-{code}', 'municipal_code': code, 'current_admin_name': name,
+                          'admin_index_level': level, 'geometry_source': GEOMETRY_SOURCE,
+                          'geometry_reference_year': '2020', 'context_buffer_m': CONTEXT_BUFFER_M,
+                          'geometry_status': 'operational_provisional_buffered',
+                          'historical_boundary_claim': 'none_current_admin_index_only',
+                          'notes': 'Operational acquisition geometry only. Not an historical boundary and not an official 2026 N03 ingest.'
+                      })
+                  except Exception as e:
+                      errors.append({'code':code,'name':name,'error':f'{type(e).__name__}: {e}','path':str(fp)})
+              if errors or len(unit_geoms) != len(SCOPE):
+                  write_json(CONTROL / 'OHG_bootstrap_diagnostics.json', {'generated_utc':utc_now(),'resolved':len(unit_geoms),'expected':len(SCOPE),'errors':errors})
+                  raise RuntimeError(f'Operational scope geometry resolution failed: resolved {len(unit_geoms)}/{len(SCOPE)}; diagnostics prepared.')
+
+              scope_features = []
+              for r in unit_rows:
+                  code = r['municipal_code']
+                  scope_features.append({'type':'Feature','properties':r,'geometry':mapping(unit_geoms[code])})
+              write_json(CONTROL / 'OHG_operational_scope_buffer_v1.geojson', {
+                  'type':'FeatureCollection',
+                  'name':'OHG operational acquisition scope, N03 2020-derived + 750m context buffer',
+                  'features':scope_features
+              })
+              write_csv(CONTROL / 'OHG_scope_registry_operational_v1.csv', unit_rows, list(unit_rows[0].keys()))
+
+              cell_units: Dict[Tuple[int,int], set] = {}
+              for code, geom in unit_geoms.items():
+                  west, south, east, north = geom.bounds
+                  xf0,yf0 = lonlat_tile(west,north); xf1,yf1 = lonlat_tile(east,south)
+                  for y in range(math.floor(yf0), math.floor(yf1)+1):
+                      for x in range(math.floor(xf0), math.floor(xf1)+1):
+                          t = tile_geom(x,y)
+                          if not geom.intersects(t):
+                              continue
+                          x0 = (x // CELL_TILES)*CELL_TILES
+                          y0 = (y // CELL_TILES)*CELL_TILES
+                          cell_units.setdefault((x0,y0),set()).add(code)
+
+              cells = []
+              for (x0,y0), codes in sorted(cell_units.items(), key=lambda p:(p[0][1],p[0][0])):
+                  west,south,east,north = cell_bbox(x0,y0)
+                  cid = cell_id(x0,y0)
+                  cells.append({
+                      'scan_cell_id':cid,'z':Z,'x0':x0,'y0':y0,'cell_tiles':CELL_TILES,
+                      'bbox_wgs84':json.dumps([west,south,east,north]),
+                      'scope_unit_codes':';'.join(sorted(codes)),
+                      'scope_unit_count':len(codes),'status':'pending','attempt_count':0,
+                      'last_attempt_utc':'','last_error':'','mosaic_relpath':'',
+                      'mosaic_sha256':'','tile_provenance_relpath':''
+                  })
+              if not cells:
+                  raise RuntimeError('No scan cells were planned.')
+              cell_fields=list(cells[0].keys())
+              write_csv(CONTROL / 'OHG_scan_cell_ledger_z17.csv', cells, cell_fields)
+
+              write_json(CONTROL / 'OHG_scope_bootstrap_provenance_v1.json', {
+                  'generated_utc':utc_now(),
+                  'scope_unit_count':len(SCOPE),
+                  'scan_zoom':Z,
+                  'cell_tile_dimension':CELL_TILES,
+                  'context_buffer_m':CONTEXT_BUFFER_M,
+                  'geometry_source':GEOMETRY_SOURCE,
+                  'geometry_source_warning':'Operational provisional geometry. Official MLIT N03 2026 ingest remains a separate QA step.',
+                  'historical_boundary_claim':'none',
+                  'cell_count':len(cells),
+                  'asset_method':'Each completed scan cell is an exact 4x4 assembly of source PNG tiles, retained at native pixels; source tile URLs and SHA256 hashes are kept per cell.',
+                  'audit_method':'A downsampled full-scope overview leaves incomplete scan cells white.'
+              })
+              return cells
+
+          def make_cell_mosaic(row, session):
+              x0,y0 = int(row['x0']),int(row['y0'])
+              tiles=[]
+              err=''
+              for y in range(y0,y0+CELL_TILES):
+                  for x in range(x0,x0+CELL_TILES):
+                      url=SOURCE_TEMPLATE.format(z=Z,x=x,y=y)
+                      try:
+                          r=session.get(url,timeout=25)
+                          blob=r.content
+                          if r.status_code != 200 or not is_valid_png_bytes(blob):
+                              return None, [], f'failed_tile {x}/{y}: HTTP {r.status_code} or invalid image'
+                          with Image.open(io.BytesIO(blob)) as im:
+                              img=im.convert('RGB')
+                              if img.size != (256,256):
+                                  return None, [], f'unexpected_tile_dimensions {x}/{y}: {img.size}'
+                          tiles.append((x,y,blob,url,sha256(blob)))
+                      except requests.RequestException as e:
+                          return None, [], f'failed_tile {x}/{y}: {type(e).__name__}: {e}'
+                      time.sleep(0.25)
+              canvas=Image.new('RGB',(CELL_TILES*256,CELL_TILES*256),'white')
+              provenance=[]
+              for x,y,blob,url,digest in tiles:
+                  with Image.open(io.BytesIO(blob)) as im:
+                      canvas.paste(im.convert('RGB'),((x-x0)*256,(y-y0)*256))
+                  provenance.append({'tile_id':f'ort_riku10/{Z}/{x}/{y}','url':url,'sha256':digest,'x':x,'y':y})
+              return canvas, provenance, ''
+
+          def make_audit(cells):
+              xs=sorted({int(r['x0']) for r in cells}); ys=sorted({int(r['y0']) for r in cells})
+              minx,maxx,miny,maxy=min(xs),max(xs),min(ys),max(ys)
+              cols=(maxx-minx)//CELL_TILES+1; rows=(maxy-miny)//CELL_TILES+1
+              thumb=max(4,min(40,3200//max(cols,rows)))
+              header,footer,pad=54,24,8
+              canvas=Image.new('RGB',(cols*thumb+pad*2,rows*thumb+header+footer+pad*2),'white')
+              draw=ImageDraw.Draw(canvas); font=ImageFont.load_default()
+              draw.text((pad,8),'OHG full-scope acquisition audit overview (z17 source-derived cell thumbnails)',fill='black',font=font)
+              draw.text((pad,26),'Filled = completed native-resolution cell mosaic; white = pending / failed. Operational index only.',fill='black',font=font)
+              complete=0
+              for r in cells:
+                  x0,y0=int(r['x0']),int(r['y0'])
+                  col=(x0-minx)//CELL_TILES; row=(y0-miny)//CELL_TILES
+                  px=pad+col*thumb; py=header+pad+row*thumb
+                  if r.get('status')=='complete' and r.get('mosaic_relpath'):
+                      p=Path(r['mosaic_relpath'])
+                      if p.exists():
+                          with Image.open(p) as im:
+                              im=im.convert('RGB').resize((thumb,thumb))
+                              canvas.paste(im,(px,py))
+                          complete+=1
+                      else:
+                          draw.rectangle([px,py,px+thumb-1,py+thumb-1],outline='gray')
+                  else:
+                      draw.rectangle([px,py,px+thumb-1,py+thumb-1],outline='lightgray')
+              draw.text((pad,canvas.height-footer),f'completed cells: {complete}/{len(cells)} | generated {utc_now()}',fill='black',font=font)
+              AUDIT.mkdir(parents=True,exist_ok=True)
+              jpg=AUDIT/'OHG_acquisition_overview_z17_lowres.jpg'
+              png=AUDIT/'OHG_acquisition_overview_z17.png'
+              canvas.save(jpg,quality=65,optimize=True)
+              canvas.save(png,optimize=True)
+              return str(jpg),str(png),complete
+
+          def acquire(max_cells):
+              ledger_path=CONTROL/'OHG_scan_cell_ledger_z17.csv'
+              cells=read_csv(ledger_path)
+              if not cells:
+                  cells=bootstrap()
+              fields=list(cells[0].keys())
+              MOSAICS.mkdir(parents=True,exist_ok=True)
+              session=requests.Session(); session.headers.update({'User-Agent':'OHG-Historical-Geography-Research/1.0 (bounded respectful acquisition)'})
+              completed_now=0; errors=[]
+              for row in cells:
+                  if completed_now>=max_cells: break
+                  cid=row['scan_cell_id']
+                  existing=Path(row['mosaic_relpath']) if row.get('mosaic_relpath') else None
+                  if row.get('status')=='complete' and existing and existing.exists():
+                      continue
+                  if existing and existing.exists():
+                      blob=existing.read_bytes(); row['status']='complete'; row['mosaic_sha256']=sha256(blob); row['last_error']=''; continue
+                  row['attempt_count']=str(int(row.get('attempt_count') or 0)+1); row['last_attempt_utc']=utc_now()
+                  mosaic,provenance,error=make_cell_mosaic(row,session)
+                  if error:
+                      row['status']='pending'; row['last_error']=error; errors.append({'scan_cell_id':cid,'error':error}); continue
+                  rel=(MOSAICS/f'{cid}.png').as_posix()
+                  out=Path(rel); out.parent.mkdir(parents=True,exist_ok=True)
+                  mosaic.save(out,format='PNG',optimize=True)
+                  digest=sha256(out.read_bytes())
+                  prov_rel=(CONTROL/'tile_provenance'/f'{cid}.json').as_posix()
+                  write_json(Path(prov_rel), {'scan_cell_id':cid,'source_name':SOURCE_NAME,'zoom':Z,'assembled_utc':utc_now(),'tiles':provenance,'method':'Exact 4x4 source-tile assembly at native 256px tiles; no resampling.'})
+                  row['status']='complete'; row['last_error']=''; row['mosaic_relpath']=rel; row['mosaic_sha256']=digest; row['tile_provenance_relpath']=prov_rel
+                  completed_now+=1
+              write_csv(ledger_path,cells,fields)
+              jpg,png,total_complete=make_audit(cells)
+              status={'generated_utc':utc_now(),'scan_zoom':Z,'cells_total':len(cells),'cells_complete':total_complete,'cells_pending':sum(1 for r in cells if r.get('status')!='complete'),'cells_completed_this_run':completed_now,'errors':errors,'audit_jpg':jpg,'audit_png':png,'next_action':'automatic hourly schedule will continue; manual run is optional if schedule delay is observed.'}
+              write_json(CONTROL/'OHG_runtime_status.json',status)
+              return status
+
+          def main():
+              max_cells=int(os.environ.get('MAX_CELLS','24'))
+              if not 1<=max_cells<=36: raise SystemExit('MAX_CELLS must be 1..36')
+              CONTROL.mkdir(parents=True,exist_ok=True)
+              if not (CONTROL/'OHG_scan_cell_ledger_z17.csv').exists():
+                  bootstrap()
+              status=acquire(max_cells)
+              print(json.dumps(status,ensure_ascii=False))
+
+          if __name__=='__main__': main()
+          __CONTROLLER__
+
+      - name: Plan or continue bounded acquisition
+        env:
+          MAX_CELLS: ${{ inputs.max_cells || '24' }}
+        run: python /tmp/ohg_controller.py
+
+      - name: Commit generated OHG assets and ledgers
+        run: |
+          git config user.name "ohg-acquisition-bot"
+          git config user.email "ohg-acquisition-bot@users.noreply.github.com"
+          git add data/ohg/
+          if git diff --cached --quiet; then
+            echo "No OHG changes to commit."
+            exit 0
+          fi
+          git commit -m "ohg: continue full-scope acquisition"
+          for attempt in 1 2 3; do
+            git pull --rebase origin main && git push && exit 0
+            git rebase --abort || true
+            sleep $((attempt * 3))
+          done
+          echo "Push failed after safe retries; no forced update was used."
+          exit 1
+
+      - name: Upload diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ohg-controller-diagnostics
+          path: |
+            data/ohg/control/
+            data/ohg/audit/
+          if-no-files-found: ignore
+          retention-days: 14
