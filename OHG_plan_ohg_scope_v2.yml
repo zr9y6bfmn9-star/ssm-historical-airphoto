@@ -1,0 +1,226 @@
+name: Build OHG authoritative scope plan v2
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ohg-scope-plan
+  cancel-in-progress: false
+
+jobs:
+  build-scope-plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install GIS dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install "geopandas>=1.0" "pyogrio>=0.10" "shapely>=2.0"
+
+      - name: Download N03 with official-page referer and build scope plan
+        run: |
+          cat > /tmp/build_ohg_scope_plan_v2.py <<'PY'
+          from __future__ import annotations
+          import csv, hashlib, json, math, re, shutil, tempfile, zipfile
+          from datetime import datetime, timezone
+          from pathlib import Path
+          from urllib.parse import urljoin
+          from urllib.request import Request, urlopen
+          from urllib.error import HTTPError
+
+          import geopandas as gpd
+          from shapely.geometry import box
+          from shapely.ops import unary_union
+          from shapely.prepared import prep
+
+          LISTING_URL = "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-N03-2026.html"
+          DIRECT_URL = "https://nlftp.mlit.go.jp/ksj/gml/data/N03/N03-20260101_27_GML.zip"
+          TARGET_FILE = "N03-20260101_27_GML.zip"
+          OUT = Path("data/scope")
+          W = 20037508.342789244
+
+          OSAKA_WARDS = [
+              "北区","都島区","福島区","此花区","中央区","西区","港区","大正区",
+              "天王寺区","浪速区","西淀川区","淀川区","東淀川区","東成区","生野区",
+              "旭区","城東区","鶴見区","阿倍野区","住之江区","住吉区","東住吉区",
+              "平野区","西成区"
+          ]
+          SAKAI_WARDS = ["堺区","中区","東区","西区","南区","北区","美原区"]
+          OTHER = [
+              "松原市","羽曳野市","富田林市","泉大津市","大阪狭山市","藤井寺市","八尾市","柏原市",
+              "太子町","千早赤阪村","河南町","河内長野市","東大阪市","守口市","門真市","寝屋川市",
+              "吹田市","箕面市","能勢町"
+          ]
+
+          def req(url):
+              return Request(url, headers={
+                  "User-Agent": "Mozilla/5.0 OHG-scope-planner/2.0",
+                  "Referer": LISTING_URL,
+                  "Accept": "application/zip,application/octet-stream,*/*",
+              })
+
+          def download_zip(path: Path):
+              attempts = [DIRECT_URL]
+              # Official download site sometimes changes the file-storage path.
+              # Parse the current official listing as a second route rather than guessing a mirror.
+              html = urlopen(Request(LISTING_URL, headers={"User-Agent":"Mozilla/5.0"}), timeout=90).read().decode("utf-8", "ignore")
+              for m in re.finditer(r'href=["\']([^"\']*' + re.escape(TARGET_FILE) + r'[^"\']*)["\']', html, flags=re.I):
+                  attempts.append(urljoin(LISTING_URL, m.group(1)))
+              attempts = list(dict.fromkeys(attempts))
+              errors = []
+              for url in attempts:
+                  try:
+                      with urlopen(req(url), timeout=120) as r, path.open("wb") as f:
+                          shutil.copyfileobj(r, f)
+                      if path.read_bytes()[:4] != b"PK\x03\x04":
+                          raise RuntimeError("response was not a ZIP archive")
+                      return url, attempts
+                  except Exception as e:
+                      errors.append({"url": url, "error": repr(e)})
+                      path.unlink(missing_ok=True)
+              raise RuntimeError("N03 download failed after official routes: " + json.dumps(errors, ensure_ascii=False))
+
+          def sha256(p):
+              h=hashlib.sha256()
+              with p.open("rb") as f:
+                  for b in iter(lambda:f.read(1024*1024), b""):
+                      h.update(b)
+              return h.hexdigest()
+
+          def scopes():
+              rows=[]
+              for i, n in enumerate(OSAKA_WARDS,1):
+                  rows.append((f"OHG-ADM-OSAKA-{i:02d}","ward","大阪市",n))
+              for i, n in enumerate(SAKAI_WARDS,1):
+                  rows.append((f"OHG-ADM-SAKAI-{i:02d}","ward","堺市",n))
+              for i, n in enumerate(OTHER,1):
+                  rows.append((f"OHG-ADM-OTHER-{i:02d}","municipality",n,n))
+              assert len(rows)==50
+              return rows
+
+          def tile_xy(x,y,z):
+              n=2**z
+              xt=int((x+W)/(2*W)*n)
+              yt=int((W-y)/(2*W)*n)
+              return max(0,min(n-1,xt)),max(0,min(n-1,yt))
+
+          def tile_box(x,y,z):
+              n=2**z
+              size=(2*W)/n
+              xmin=-W+x*size; xmax=xmin+size
+              ymax=W-y*size; ymin=ymax-size
+              return box(xmin,ymin,xmax,ymax)
+
+          def intersecting_tiles(geom,z):
+              g=prep(geom)
+              minx,miny,maxx,maxy=geom.bounds
+              x0,y1=tile_xy(minx,miny,z)
+              x1,y0=tile_xy(maxx,maxy,z)
+              hits=[]
+              for x in range(min(x0,x1), max(x0,x1)+1):
+                  for y in range(min(y0,y1), max(y0,y1)+1):
+                      if g.intersects(tile_box(x,y,z)):
+                          hits.append((x,y))
+              return hits
+
+          OUT.mkdir(parents=True, exist_ok=True)
+          with tempfile.TemporaryDirectory(prefix="ohg_n03_") as td:
+              td=Path(td); zip_path=td/TARGET_FILE
+              resolved_url, attempted_urls=download_zip(zip_path)
+              with zipfile.ZipFile(zip_path) as z: z.extractall(td/"x")
+              shp=next(iter(sorted((td/"x").rglob("*.shp"))), None)
+              if shp is None:
+                  raise RuntimeError("N03 archive contained no shapefile")
+              gdf=gpd.read_file(shp)
+              needed={"N03_001","N03_004","N03_005","N03_007"}
+              if not needed.issubset(gdf.columns):
+                  raise RuntimeError("missing N03 fields: "+str(sorted(needed-set(gdf.columns))))
+              gdf=gdf[gdf["N03_001"].fillna("")=="大阪府"].copy()
+              gdf3857=gdf.to_crs(3857)
+              gdfarea=gdf.to_crs(6674)  # JGD2011 / Japan Plane Rectangular CS VI
+
+              records=[]; all_geoms=[]
+              for sid, level, parent, name in scopes():
+                  if level=="ward":
+                      mask=(gdf["N03_004"].fillna("")==parent) & (gdf["N03_005"].fillna("")==name)
+                  else:
+                      mask=(gdf["N03_004"].fillna("")==name)
+                  idx=gdf.index[mask].tolist()
+                  if not idx:
+                      raise RuntimeError(f"scope unit not found in N03: {sid} {parent} {name}")
+                  geom3857=unary_union(gdf3857.loc[idx,"geometry"].tolist())
+                  geomarea=unary_union(gdfarea.loc[idx,"geometry"].tolist())
+                  t17=intersecting_tiles(geom3857,17)
+                  t18=intersecting_tiles(geom3857,18)
+                  records.append({
+                      "scope_unit_id":sid,"admin_index_level":level,"parent_municipality":parent,
+                      "current_admin_name":name,"n03_feature_count":len(idx),
+                      "area_km2":round(geomarea.area/1_000_000,6),
+                      "z17_intersecting_tiles":len(t17),"z18_intersecting_tiles":len(t18),
+                      "z18_batches_24":math.ceil(len(t18)/24),
+                      "z18_batches_200":math.ceil(len(t18)/200),
+                  })
+                  all_geoms.append(geom3857)
+
+              union=unary_union(all_geoms)
+              total17=intersecting_tiles(union,17)
+              total18=intersecting_tiles(union,18)
+
+              unit_path=OUT/"OHG_scope_unit_tile_estimates_v2.csv"
+              with unit_path.open("w",newline="",encoding="utf-8") as f:
+                  w=csv.DictWriter(f,fieldnames=list(records[0].keys())); w.writeheader(); w.writerows(records)
+
+              total = {
+                  "scope_version":"OHG Scope v1.0",
+                  "unit_count":len(records),
+                  "source_id":"MLIT_N03_2026_OSAKA",
+                  "source_listing_url":LISTING_URL,
+                  "source_resolved_download_url":resolved_url,
+                  "source_sha256":sha256(zip_path),
+                  "z17_unique_intersecting_tiles":len(total17),
+                  "z18_unique_intersecting_tiles":len(total18),
+                  "z18_batches_24":math.ceil(len(total18)/24),
+                  "z18_batches_200":math.ceil(len(total18)/200),
+                  "generated_utc":datetime.now(timezone.utc).isoformat(),
+                  "note":"Counts are geometry-intersecting XYZ tiles for planning, not a claim that each tile has historical-photo coverage."
+              }
+              total_path=OUT/"OHG_scope_total_tile_estimate_v2.csv"
+              with total_path.open("w",newline="",encoding="utf-8") as f:
+                  w=csv.DictWriter(f,fieldnames=list(total.keys())); w.writeheader(); w.writerow(total)
+
+              manifest={
+                  "schema_version":"OHG_scope_plan_v2",
+                  "source":total,
+                  "attempted_download_urls":attempted_urls,
+                  "outputs":[str(unit_path),str(total_path)],
+                  "geometry_policy":"No N03 geometry is committed; only non-geometric planning summaries are written."
+              }
+              (OUT/"OHG_scope_plan_manifest_v2.json").write_text(json.dumps(manifest,ensure_ascii=False,indent=2),encoding="utf-8")
+          PY
+          python /tmp/build_ohg_scope_plan_v2.py
+
+      - name: Commit non-geometric planning outputs
+        run: |
+          git config user.name "ohg-scope-bot"
+          git config user.email "ohg-scope-bot@users.noreply.github.com"
+          git add data/scope/
+          if git diff --cached --quiet; then
+            echo "No generated changes to commit."
+          else
+            git commit -m "data: build OHG authoritative scope plan v2"
+            git push
+          fi
