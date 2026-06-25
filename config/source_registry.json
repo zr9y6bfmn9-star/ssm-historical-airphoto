@@ -1,0 +1,12 @@
+{
+  "S007": {
+    "name": "国土地理院 地理院タイル 空中写真（1936年〜1942年頃） ort_riku10",
+    "layer_id": "ort_riku10",
+    "url_template": "https://cyberjapandata.gsi.go.jp/xyz/ort_riku10/{z}/{x}/{y}.png",
+    "zoom_min": 13,
+    "zoom_max": 18,
+    "attribution": "出典：国土地理院「地理院タイル（空中写真（1936年〜1942年頃））」をもとに本プロジェクトで取得・結合",
+    "source_page": "https://maps.gsi.go.jp/development/ichiran.html",
+    "note": "The historical layer is the source. Mosaics are derivative research assets and must retain source attribution."
+  }
+}

@@ -1,0 +1,7 @@
+run_id,grid_ids,max_new_tiles,timebox_minutes,purpose,next_step
+SSM-T01A,"SSM-B001-G01,SSM-B001-G04",18,25,"Acquire and QC only; do not interpret imagery.","T02-G01-A and T02-G04-A visual sweep"
+SSM-T01B,"SSM-B001-G02,SSM-B001-G05",18,25,"Acquire and QC only; do not interpret imagery.","T02-G02-A and T02-G05-A visual sweep"
+SSM-T01C,"SSM-B001-G03,SSM-B001-G06",18,25,"Acquire and QC only; do not interpret imagery.","T02-G03-A and T02-G06-A visual sweep"
+SSM-T01D,"SSM-B001-G07,SSM-B001-G10",18,25,"Acquire and QC only; do not interpret imagery.","T02-G07-A and T02-G10-A visual sweep"
+SSM-T01E,"SSM-B001-G08,SSM-B001-G11",18,25,"Acquire and QC only; do not interpret imagery.","T02-G08-A and T02-G11-A visual sweep"
+SSM-T01F,"SSM-B001-G09,SSM-B001-G12",18,25,"Acquire and QC only; do not interpret imagery.","T02-G09-A and T02-G12-A visual sweep"

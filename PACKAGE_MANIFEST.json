@@ -1,0 +1,96 @@
+{
+  "package": "SSM Historical Airphoto Bridge",
+  "version": "1.0",
+  "files": [
+    {
+      "path": ".github/workflows/acquire_ort_riku10.yml",
+      "sha256": "d1ed86150d0b9464e4c4335cf87c43bd9a55bda8428a3bee70933fa106d6c5f3",
+      "bytes": 2320
+    },
+    {
+      "path": ".github/workflows/test.yml",
+      "sha256": "aecefb550b4b4ca7f15aecf337729733affc636849402d6d44a842063c36c66b",
+      "bytes": 594
+    },
+    {
+      "path": ".gitignore",
+      "sha256": "a8577ddcc59722792e17894a92880984e5e4bb2a956469af5cb444591d6ed9a2",
+      "bytes": 55
+    },
+    {
+      "path": "LICENSE",
+      "sha256": "1126322e2cc8d165adc4c792eeb195717de2bcc7b39be1ce77959d78e87ef685",
+      "bytes": 1056
+    },
+    {
+      "path": "README.md",
+      "sha256": "ca8aab5dab6a7ac95ad79a0f9efa7bc48ad62cee9213c28fe78da315ec3fd9e5",
+      "bytes": 3645
+    },
+    {
+      "path": "config/SSM_B001_grid_plan.csv",
+      "sha256": "48ac4cb01d5a077717a3b1388956ef38d9806ad286b5cc47ae87b29641f16914",
+      "bytes": 3658
+    },
+    {
+      "path": "config/run_order.csv",
+      "sha256": "aff7916861a4fabae4a6977a61e4f4b06683090444d9cc416eed68d66675c3f0",
+      "bytes": 850
+    },
+    {
+      "path": "config/source_registry.json",
+      "sha256": "a189e8d77282179b26bdd7ee5a0a4fba8d6f206a11538c8bd63ece499e6b4fe8",
+      "bytes": 638
+    },
+    {
+      "path": "data/README.md",
+      "sha256": "2707f33ee4175cefe88d825e11f7e9f90af9954f9197dbaac9488249645c77e0",
+      "bytes": 476
+    },
+    {
+      "path": "data/manifests/manifest.json",
+      "sha256": "7c95c8c8d2293cd0430d895e7516cff62dbd0814afe589a93a2e61c683a8184a",
+      "bytes": 324
+    },
+    {
+      "path": "data/manifests/mosaic_ledger.csv",
+      "sha256": "27abc48a65a055bd6bf547f76a48f370bc911cdfa0e12f41f59f147bdbf8229a",
+      "bytes": 84
+    },
+    {
+      "path": "data/manifests/tile_ledger.csv",
+      "sha256": "7ad8bf2b2c917686056b12c56e47e95f3d444ac577d124cf88b0eeae73d31a32",
+      "bytes": 146
+    },
+    {
+      "path": "docs/SOURCE_AND_METHOD.md",
+      "sha256": "b743a4502b6724139a00dff6bcb06f9d6b4c917437b53f5aa40055b8a4919916",
+      "bytes": 1481
+    },
+    {
+      "path": "requirements.txt",
+      "sha256": "78df9b510e8db659a5be64f45a546c7e73a4e64890c7c68b5011fcb6d88cd71d",
+      "bytes": 39
+    },
+    {
+      "path": "scripts/__pycache__/acquire_ort_riku10.cpython-313.pyc",
+      "sha256": "52084e840e599b1330e8e9707b77e8dcd1adb6232f689c5fc991fc4473ac8c46",
+      "bytes": 29597
+    },
+    {
+      "path": "scripts/acquire_ort_riku10.py",
+      "sha256": "89c41714f664d0de4c8ec16af33d0323bd79b52b31e59d8f0132eec0ebea1634",
+      "bytes": 19872
+    },
+    {
+      "path": "tests/__pycache__/test_tiles.cpython-313.pyc",
+      "sha256": "cc26b3c6f37751e6c58b54e46d4809073ab1a15b79a91ca71554375f9976c1b8",
+      "bytes": 2147
+    },
+    {
+      "path": "tests/test_tiles.py",
+      "sha256": "86c39aa3b824d44ad7303f51d1886bf65553a2956ed1573480fb95422d1f9196",
+      "bytes": 746
+    }
+  ]
+}
