@@ -1,0 +1,345 @@
+name: Build OHG authoritative scope plan
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ohg-scope-plan
+  cancel-in-progress: false
+
+jobs:
+  build-scope-plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install GIS dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install "geopandas>=1.0" "pyogrio>=0.10" "shapely>=2.0"
+
+      - name: Write scope-planning script
+        run: |
+          cat > /tmp/build_ohg_scope_plan.py <<'PY'
+          #!/usr/bin/env python3
+          """Build non-geometric OHG coverage and tile-estimation ledgers from MLIT N03 2026 Osaka data.
+          
+          This script intentionally does NOT publish N03 boundary geometry. It writes only
+          non-geometric summaries and source/processing metadata suitable for planning.
+          """
+          from __future__ import annotations
+          
+          import csv
+          import hashlib
+          import json
+          import math
+          import os
+          import shutil
+          import sys
+          import tempfile
+          import zipfile
+          from datetime import datetime, timezone
+          from pathlib import Path
+          from urllib.request import Request, urlopen
+          
+          import geopandas as gpd
+          from shapely.geometry import box
+          from shapely.ops import unary_union
+          from shapely.prepared import prep
+          
+          N03_URL = "https://nlftp.mlit.go.jp/ksj/gml/data/N03/N03-20260101_27_GML.zip"
+          SOURCE_ID = "MLIT_N03_2026_OSAKA"
+          OUT_DIR = Path("data/scope")
+          W = 20037508.342789244
+          
+          OSAKA_WARDS = [
+              "北区", "都島区", "福島区", "此花区", "中央区", "西区", "港区", "大正区",
+              "天王寺区", "浪速区", "西淀川区", "淀川区", "東淀川区", "東成区", "生野区",
+              "旭区", "城東区", "鶴見区", "阿倍野区", "住之江区", "住吉区", "東住吉区",
+              "平野区", "西成区",
+          ]
+          SAKAI_WARDS = ["堺区", "中区", "東区", "西区", "南区", "北区", "美原区"]
+          OTHER_MUNICIPALITIES = [
+              "松原市", "羽曳野市", "富田林市", "泉大津市", "大阪狭山市", "藤井寺市", "八尾市",
+              "柏原市", "太子町", "千早赤阪村", "河南町", "河内長野市", "東大阪市", "守口市",
+              "門真市", "寝屋川市", "吹田市", "箕面市", "能勢町",
+          ]
+          
+          
+          def scope_defs() -> list[dict]:
+              rows: list[dict] = []
+              for i, ward in enumerate(OSAKA_WARDS, 1):
+                  rows.append({
+                      "scope_unit_id": f"OHG-ADM-OSAKA-{i:02d}",
+                      "admin_index_level": "ward",
+                      "parent_municipality": "大阪市",
+                      "current_admin_name": ward,
+                  })
+              for i, ward in enumerate(SAKAI_WARDS, 1):
+                  rows.append({
+                      "scope_unit_id": f"OHG-ADM-SAKAI-{i:02d}",
+                      "admin_index_level": "ward",
+                      "parent_municipality": "堺市",
+                      "current_admin_name": ward,
+                  })
+              for i, name in enumerate(OTHER_MUNICIPALITIES, 1):
+                  rows.append({
+                      "scope_unit_id": f"OHG-ADM-OTHER-{i:02d}",
+                      "admin_index_level": "municipality",
+                      "parent_municipality": name,
+                      "current_admin_name": name,
+                  })
+              assert len(rows) == 50
+              return rows
+          
+          
+          def sha256_file(path: Path) -> str:
+              h = hashlib.sha256()
+              with path.open("rb") as f:
+                  for chunk in iter(lambda: f.read(1024 * 1024), b""):
+                      h.update(chunk)
+              return h.hexdigest()
+          
+          
+          def download(url: str, out: Path) -> None:
+              req = Request(url, headers={"User-Agent": "OHG-scope-planner/1.0"})
+              with urlopen(req, timeout=90) as response, out.open("wb") as f:
+                  shutil.copyfileobj(response, f)
+          
+          
+          def pick_vector_file(root: Path) -> Path:
+              shps = sorted(root.rglob("*.shp"))
+              if shps:
+                  return shps[0]
+              gmls = sorted(root.rglob("*.gml")) + sorted(root.rglob("*.xml"))
+              if gmls:
+                  return gmls[0]
+              raise RuntimeError("N03 archive contained no .shp, .gml, or .xml vector file")
+          
+          
+          def read_n03(zip_path: Path) -> gpd.GeoDataFrame:
+              with tempfile.TemporaryDirectory(prefix="ohg_n03_") as td:
+                  root = Path(td)
+                  with zipfile.ZipFile(zip_path) as zf:
+                      zf.extractall(root)
+                  vector_file = pick_vector_file(root)
+                  gdf = gpd.read_file(vector_file)
+              expected = {"N03_001", "N03_004", "N03_005", "N03_007"}
+              missing = expected.difference(gdf.columns)
+              if missing:
+                  raise RuntimeError(f"N03 expected attributes missing: {sorted(missing)}")
+              if gdf.crs is None:
+                  # N03 2026 is published in JGD2011 geographic coordinates.
+                  gdf = gdf.set_crs("EPSG:6668", allow_override=True)
+              return gdf
+          
+          
+          def select_scope_geometry(gdf: gpd.GeoDataFrame, parent: str, name: str, level: str):
+              if level == "ward":
+                  mask = (gdf["N03_004"].fillna("") == parent) & (gdf["N03_005"].fillna("") == name)
+              else:
+                  mask = (gdf["N03_004"].fillna("") == name)
+              sel = gdf.loc[mask].copy()
+              if sel.empty:
+                  raise RuntimeError(f"No N03 geometry matched: parent={parent}, name={name}, level={level}")
+              geom = unary_union([g for g in sel.geometry if g is not None and not g.is_empty])
+              if geom.is_empty:
+                  raise RuntimeError(f"Empty dissolved geometry: {name}")
+              codes = sorted({str(v) for v in sel["N03_007"].dropna().tolist()})
+              return geom, len(sel), ";".join(codes)
+          
+          
+          def tiles_for_geometry(geom_3857, zoom: int) -> int:
+              """Count XYZ tiles with positive/intersecting coverage; conservative at boundary touches."""
+              minx, miny, maxx, maxy = geom_3857.bounds
+              n = 2 ** zoom
+              size = (2 * W) / n
+              x0 = max(0, min(n - 1, int(math.floor((minx + W) / size))))
+              x1 = max(0, min(n - 1, int(math.ceil((maxx + W) / size) - 1)))
+              y0 = max(0, min(n - 1, int(math.floor((W - maxy) / size))))
+              y1 = max(0, min(n - 1, int(math.ceil((W - miny) / size) - 1)))
+              pg = prep(geom_3857)
+              count = 0
+              for y in range(y0, y1 + 1):
+                  tile_maxy = W - y * size
+                  tile_miny = tile_maxy - size
+                  for x in range(x0, x1 + 1):
+                      tile_minx = -W + x * size
+                      tile_maxx = tile_minx + size
+                      if pg.intersects(box(tile_minx, tile_miny, tile_maxx, tile_maxy)):
+                          count += 1
+              return count
+          
+          
+          def meter_per_pixel(latitude_deg: float, zoom: int) -> float:
+              return 156543.03392804097 * math.cos(math.radians(latitude_deg)) / (2 ** zoom)
+          
+          
+          def write_csv(path: Path, rows: list[dict], fieldnames: list[str]) -> None:
+              with path.open("w", encoding="utf-8-sig", newline="") as f:
+                  writer = csv.DictWriter(f, fieldnames=fieldnames)
+                  writer.writeheader()
+                  writer.writerows(rows)
+          
+          
+          def main() -> None:
+              OUT_DIR.mkdir(parents=True, exist_ok=True)
+              generated_at = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+              source_zip = OUT_DIR / "_N03-20260101_27_GML.zip"
+              if not source_zip.exists():
+                  print(f"Downloading authoritative N03 source: {N03_URL}")
+                  download(N03_URL, source_zip)
+              source_sha = sha256_file(source_zip)
+              gdf = read_n03(source_zip)
+              # Keep source binary only during execution; do not commit it to the public repository.
+              try:
+                  source_zip.unlink()
+              except FileNotFoundError:
+                  pass
+          
+              defs = scope_defs()
+              geometries = []
+              unit_rows = []
+              for spec in defs:
+                  geom, feature_count, codes = select_scope_geometry(
+                      gdf,
+                      spec["parent_municipality"],
+                      spec["current_admin_name"],
+                      spec["admin_index_level"],
+                  )
+                  one = gpd.GeoSeries([geom], crs=gdf.crs)
+                  area_km2 = float(one.to_crs("EPSG:6933").area.iloc[0] / 1_000_000)
+                  geom3857 = one.to_crs("EPSG:3857").iloc[0]
+                  z17 = tiles_for_geometry(geom3857, 17)
+                  z18 = tiles_for_geometry(geom3857, 18)
+                  minlon, minlat, maxlon, maxlat = one.to_crs("EPSG:4326").iloc[0].bounds
+                  unit_rows.append({
+                      **spec,
+                      "n03_source_id": SOURCE_ID,
+                      "n03_reference_date": "2026-01-01",
+                      "n03_local_government_code": codes,
+                      "n03_source_feature_count": feature_count,
+                      "area_km2_equal_area": round(area_km2, 4),
+                      "bbox_wgs84_minlon": round(minlon, 7),
+                      "bbox_wgs84_minlat": round(minlat, 7),
+                      "bbox_wgs84_maxlon": round(maxlon, 7),
+                      "bbox_wgs84_maxlat": round(maxlat, 7),
+                      "ort_riku10_z17_intersecting_tiles": z17,
+                      "ort_riku10_z18_intersecting_tiles": z18,
+                      "manual_runs_at_24_tiles_z17": math.ceil(z17 / 24),
+                      "manual_runs_at_24_tiles_z18": math.ceil(z18 / 24),
+                      "queue_batches_at_72_tiles_z17": math.ceil(z17 / 72),
+                      "queue_batches_at_72_tiles_z18": math.ceil(z18 / 72),
+                      "geometry_published": "no",
+                      "geometry_status": "processed_in_runner_not_committed",
+                  })
+                  geometries.append(geom)
+          
+              union = unary_union(geometries)
+              union_series = gpd.GeoSeries([union], crs=gdf.crs)
+              union3857 = union_series.to_crs("EPSG:3857").iloc[0]
+              union4326 = union_series.to_crs("EPSG:4326").iloc[0]
+              union_area = float(union_series.to_crs("EPSG:6933").area.iloc[0] / 1_000_000)
+              z17_total = tiles_for_geometry(union3857, 17)
+              z18_total = tiles_for_geometry(union3857, 18)
+              centroid_lat = union4326.centroid.y
+          
+              unit_fields = list(unit_rows[0].keys())
+              write_csv(OUT_DIR / "OHG_scope_unit_tile_estimates_v1.0.csv", unit_rows, unit_fields)
+          
+              total_row = {
+                  "scope_id": "OHG-SCOPE-v1.0",
+                  "admin_unit_count": 50,
+                  "parent_municipality_count": 21,
+                  "n03_source_id": SOURCE_ID,
+                  "n03_reference_date": "2026-01-01",
+                  "n03_source_url": N03_URL,
+                  "n03_archive_sha256": source_sha,
+                  "geometry_output_policy": "No N03 geometry committed; only non-geometric planning summaries are published.",
+                  "union_area_km2_equal_area": round(union_area, 4),
+                  "ort_riku10_z17_unique_intersecting_tiles": z17_total,
+                  "ort_riku10_z18_unique_intersecting_tiles": z18_total,
+                  "z17_meters_per_pixel_at_scope_centroid": round(meter_per_pixel(centroid_lat, 17), 4),
+                  "z18_meters_per_pixel_at_scope_centroid": round(meter_per_pixel(centroid_lat, 18), 4),
+                  "manual_runs_at_24_tiles_z17": math.ceil(z17_total / 24),
+                  "manual_runs_at_24_tiles_z18": math.ceil(z18_total / 24),
+                  "queue_batches_at_72_tiles_z17": math.ceil(z17_total / 72),
+                  "queue_batches_at_72_tiles_z18": math.ceil(z18_total / 72),
+                  "recommended_next_decision": "Choose primary first-pass zoom after reviewing z17/z18 totals; do not start all-scope acquisition yet.",
+                  "generated_at_utc": generated_at,
+              }
+              write_csv(OUT_DIR / "OHG_scope_total_tile_estimate_v1.0.csv", [total_row], list(total_row.keys()))
+          
+              manifest = {
+                  "scope_id": "OHG-SCOPE-v1.0",
+                  "generated_at_utc": generated_at,
+                  "data_source": {
+                      "id": SOURCE_ID,
+                      "reference_date": "2026-01-01",
+                      "download_url": N03_URL,
+                      "archive_sha256": source_sha,
+                      "published_geometry": False,
+                  },
+                  "analysis": {
+                      "admin_unit_count": 50,
+                      "parent_municipality_count": 21,
+                      "area_projection": "EPSG:6933",
+                      "tile_projection": "EPSG:3857",
+                      "tile_count_rule": "XYZ tiles whose bounding box intersects the dissolved current administrative scope; boundary-touching tiles are conservatively included.",
+                      "primary_zoom_options": [17, 18],
+                      "mpp_at_scope_centroid": {
+                          "z17": round(meter_per_pixel(centroid_lat, 17), 4),
+                          "z18": round(meter_per_pixel(centroid_lat, 18), 4),
+                      },
+                  },
+                  "outputs": [
+                      "data/scope/OHG_scope_unit_tile_estimates_v1.0.csv",
+                      "data/scope/OHG_scope_total_tile_estimate_v1.0.csv",
+                  ],
+                  "limitations": [
+                      "Current administrative boundaries are a coverage index only, not historical boundaries.",
+                      "Tile totals estimate image-acquisition workload, not visual-candidate count.",
+                      "No decision to acquire all z17 or z18 tiles is made by this planner.",
+                  ],
+              }
+              (OUT_DIR / "OHG_scope_plan_manifest_v1.0.json").write_text(
+                  json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+              )
+              print(json.dumps(total_row, ensure_ascii=False, indent=2))
+          
+          
+          if __name__ == "__main__":
+              try:
+                  main()
+              except Exception as exc:
+                  print(f"OHG scope plan failed: {exc}", file=sys.stderr)
+                  raise
+          PY
+
+      - name: Download N03, calculate authoritative scope coverage, and estimate tiles
+        run: python /tmp/build_ohg_scope_plan.py
+
+      - name: Commit non-geometric planning outputs
+        run: |
+          git config user.name "ohg-scope-bot"
+          git config user.email "ohg-scope-bot@users.noreply.github.com"
+          git add data/scope/
+          if git diff --cached --quiet; then
+            echo "No scope-plan changes to commit."
+          else
+            git commit -m "scope: build OHG N03 2026 tile estimate"
+            git push
+          fi
