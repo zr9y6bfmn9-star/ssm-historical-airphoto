@@ -1,0 +1,179 @@
+name: Build acquisition audit mosaic
+
+on:
+  workflow_dispatch:
+    inputs:
+      manifest_path:
+        description: "Manifest JSON path in repo"
+        required: true
+        default: "data/manifests/manifest.json"
+        type: string
+      tile_px:
+        description: "Output size per grid tile in pixels"
+        required: true
+        default: "220"
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build-audit-mosaic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip && pip install pillow
+
+      - name: Build audit mosaic and summary
+        env:
+          MANIFEST_PATH: ${{ inputs.manifest_path }}
+          TILE_PX: ${{ inputs.tile_px }}
+        run: |
+          python - <<'PY'
+          import csv, json, math, os
+          from pathlib import Path
+          from PIL import Image, ImageDraw, ImageFont
+
+          manifest_path = Path(os.environ['MANIFEST_PATH'])
+          tile_px = int(os.environ['TILE_PX'])
+          if not manifest_path.exists():
+              raise FileNotFoundError(f"Manifest not found: {manifest_path}")
+
+          manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
+          grids = manifest.get('grids', [])
+          if not grids:
+              raise ValueError('No grids found in manifest')
+
+          block_id = manifest.get('block_id', 'unknown_block')
+          generated = manifest.get('generated_utc', '')
+          source_name = manifest.get('source', {}).get('name', '')
+
+          xs = sorted({round(g['bbox_wgs84'][0], 9) for g in grids})
+          y_tops = sorted({round(g['bbox_wgs84'][3], 9) for g in grids}, reverse=True)
+          x_index = {x: i for i, x in enumerate(xs)}
+          y_index = {y: i for i, y in enumerate(y_tops)}
+          cols = len(xs)
+          rows = len(y_tops)
+
+          header_h = 90
+          footer_h = 24
+          pad = 8
+          canvas = Image.new('RGB', (cols * tile_px + pad * 2, rows * tile_px + header_h + footer_h + pad * 2), 'white')
+          draw = ImageDraw.Draw(canvas)
+          font = ImageFont.load_default()
+
+          title = f"{block_id} acquisition audit mosaic"
+          subtitle = f"Source: {source_name} | Manifest UTC: {generated}"
+          draw.text((pad, 8), title, fill='black', font=font)
+          draw.text((pad, 28), subtitle, fill='black', font=font)
+          draw.text((pad, 48), "Filled cell = mosaic available; blank cell = not yet acquired/generated", fill='black', font=font)
+
+          audit_dir = Path('data/audit')
+          audit_dir.mkdir(parents=True, exist_ok=True)
+
+          rows_out = []
+          ready_count = 0
+          missing_count = 0
+
+          for g in grids:
+              bbox = g['bbox_wgs84']
+              c = x_index[round(bbox[0], 9)]
+              r = y_index[round(bbox[3], 9)]
+              x0 = pad + c * tile_px
+              y0 = header_h + pad + r * tile_px
+              x1 = x0 + tile_px
+              y1 = y0 + tile_px
+
+              mosaic_relpath = g.get('mosaic_relpath', '')
+              mosaic_path = Path('data') / mosaic_relpath if mosaic_relpath else None
+              ready = bool(mosaic_relpath) and mosaic_path.exists()
+
+              if ready:
+                  ready_count += 1
+                  img = Image.open(mosaic_path).convert('RGB')
+                  img.thumbnail((tile_px - 2, tile_px - 22))
+                  px = x0 + (tile_px - img.width) // 2
+                  py = y0 + 18 + (tile_px - 22 - img.height) // 2
+                  canvas.paste(img, (px, py))
+              else:
+                  missing_count += 1
+                  draw.rectangle([x0, y0, x1, y1], fill='white', outline='lightgray', width=2)
+                  draw.line([x0, y0, x1, y1], fill='lightgray', width=1)
+                  draw.line([x1, y0, x0, y1], fill='lightgray', width=1)
+                  draw.text((x0 + 8, y0 + tile_px//2 - 8), 'blank', fill='gray', font=font)
+
+              draw.rectangle([x0, y0, x1, y1], outline='black', width=1)
+              label1 = g.get('grid_id', '')
+              label2 = g.get('mosaic_status', '')
+              label3 = f"tiles {g.get('source_tiles_ready', 0)}/{g.get('source_tiles_ready', 0) + g.get('source_tiles_missing_or_failed', 0)}"
+              draw.rectangle([x0, y0, x1, y0 + 18], fill='white')
+              draw.text((x0 + 4, y0 + 4), label1, fill='black', font=font)
+              draw.rectangle([x0, y1 - 30, x1, y1], fill='white')
+              draw.text((x0 + 4, y1 - 28), label2[:28], fill='black', font=font)
+              draw.text((x0 + 4, y1 - 16), label3[:28], fill='black', font=font)
+
+              rows_out.append({
+                  'block_id': block_id,
+                  'grid_id': g.get('grid_id', ''),
+                  'bbox_wgs84': json.dumps(bbox, ensure_ascii=False),
+                  'mosaic_status': g.get('mosaic_status', ''),
+                  'source_tiles_ready': g.get('source_tiles_ready', 0),
+                  'source_tiles_missing_or_failed': g.get('source_tiles_missing_or_failed', 0),
+                  'mosaic_relpath': mosaic_relpath,
+                  'audit_visual_status': 'filled' if ready else 'blank'
+              })
+
+          draw.text((pad, canvas.height - footer_h), f"ready cells: {ready_count} / {len(grids)} | blank cells: {missing_count}", fill='black', font=font)
+
+          png_path = audit_dir / f"{block_id}_acquisition_audit_mosaic.png"
+          jpg_path = audit_dir / f"{block_id}_acquisition_audit_mosaic_lowq.jpg"
+          csv_path = audit_dir / f"{block_id}_acquisition_audit_status.csv"
+          json_path = audit_dir / f"{block_id}_acquisition_audit_summary.json"
+
+          canvas.save(png_path)
+          canvas.save(jpg_path, quality=60, optimize=True)
+
+          with csv_path.open('w', newline='', encoding='utf-8') as f:
+              w = csv.DictWriter(f, fieldnames=list(rows_out[0].keys()))
+              w.writeheader()
+              w.writerows(rows_out)
+
+          summary = {
+              'block_id': block_id,
+              'manifest_path': str(manifest_path),
+              'source_name': source_name,
+              'manifest_generated_utc': generated,
+              'grid_count': len(grids),
+              'ready_cells': ready_count,
+              'blank_cells': missing_count,
+              'output_png': str(png_path),
+              'output_jpg': str(jpg_path),
+              'output_csv': str(csv_path)
+          }
+          json_path.write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding='utf-8')
+          print(json.dumps(summary, ensure_ascii=False, indent=2))
+          PY
+
+      - name: Commit audit outputs
+        run: |
+          git config user.name "ssm-airphoto-bot"
+          git config user.email "ssm-airphoto-bot@users.noreply.github.com"
+          git add data/audit/
+          if git diff --cached --quiet; then
+            echo "No audit output changes to commit."
+          else
+            git commit -m "audit: build acquisition mosaic"
+            git push
+          fi
