@@ -1,1 +1,3 @@
 grid_id,mosaic_status,mosaic_relpath,mosaic_sha256,missing_tiles,run_id,updated_utc
+SSM-B001-G01,complete,mosaics/ort_riku10/SSM-B001-G01_z18.png,858162ca8c74f0bb611513d36e809e7d58b048a183ca90b5fca1956b24c38f18,,SSM-T01A,2026-06-25T12:31:26Z
+SSM-B001-G04,complete,mosaics/ort_riku10/SSM-B001-G04_z18.png,54e86f6ee7c161028c605c021cfd8377c06063646bc39360ed86348555205475,,SSM-T01A,2026-06-25T12:31:27Z

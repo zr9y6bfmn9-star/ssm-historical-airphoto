@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SSM Historical Airphoto Bridge</title>
+<style>body{font-family:system-ui,sans-serif;margin:2rem;line-height:1.45} .card{border:1px solid #bbb;padding:1rem;margin:1rem 0} img{max-width:100%;height:auto;border:1px solid #ddd} code{word-break:break-all}</style>
+<h1>SSM Historical Airphoto Bridge</h1><p>出典：国土地理院「地理院タイル（空中写真（1936年〜1942年頃））」をもとに本プロジェクトで取得・結合。</p><p>候補抽出・社会的性格付けはこのページでは行いません。</p><div id="app">Loading manifest…</div>
+<script>
+fetch('manifests/manifest.json').then(r=>r.json()).then(m=>{
+ const a=document.getElementById('app'); a.innerHTML='';
+ m.grids.forEach(g=>{const d=document.createElement('div');d.className='card';
+ const title=document.createElement('h2');title.textContent=g.grid_id+' — '+g.mosaic_status; d.appendChild(title);
+ const p=document.createElement('p');p.textContent='bbox: '+g.bbox_wgs84.join(', ')+' / source tiles ready: '+g.source_tiles_ready+' / missing: '+g.source_tiles_missing_or_failed;d.appendChild(p);
+ if(g.mosaic_relpath){const img=document.createElement('img'); img.src=g.mosaic_relpath;img.alt=g.grid_id+' historical mosaic';d.appendChild(img);}
+ a.appendChild(d);
+ });
+}).catch(e=>document.getElementById('app').textContent='Manifest load error: '+e);
+</script></html>

@@ -1,8 +1,247 @@
 {
   "schema_version": "1.0",
-  "generated_utc": null,
+  "generated_utc": "2026-06-25T12:31:27Z",
   "block_id": "SSM-B001",
-  "purpose": "Awaiting first GitHub Actions acquisition run. No image or visual-lead has been created.",
+  "purpose": "Auditable acquisition bridge for historical-airphoto candidate extraction. No candidate interpretation is made here.",
+  "source": {
+    "name": "国土地理院 地理院タイル 空中写真（1936年〜1942年頃） ort_riku10",
+    "layer_id": "ort_riku10",
+    "url_template": "https://cyberjapandata.gsi.go.jp/xyz/ort_riku10/{z}/{x}/{y}.png",
+    "zoom_min": 13,
+    "zoom_max": 18,
+    "attribution": "出典：国土地理院「地理院タイル（空中写真（1936年〜1942年頃））」をもとに本プロジェクトで取得・結合",
+    "source_page": "https://maps.gsi.go.jp/development/ichiran.html",
+    "note": "The historical layer is the source. Mosaics are derivative research assets and must retain source attribution."
+  },
   "scope_warning": "The B001 scope is provisional until its historical-geographic correspondence is separately verified.",
-  "grids": []
+  "grids": [
+    {
+      "grid_id": "SSM-B001-G01",
+      "block_id": "SSM-B001",
+      "bbox_wgs84": [
+        135.5125,
+        34.603375,
+        135.515167,
+        34.606
+      ],
+      "zoom": 18,
+      "scope_status": "provisional_scope_needs_geographic_verification",
+      "source_tiles_ready": 9,
+      "source_tiles_missing_or_failed": 0,
+      "mosaic_status": "complete",
+      "mosaic_relpath": "mosaics/ort_riku10/SSM-B001-G01_z18.png",
+      "mosaic_sha256": "858162ca8c74f0bb611513d36e809e7d58b048a183ca90b5fca1956b24c38f18",
+      "missing_tiles": "",
+      "interpretation_status": "not_interpreted_by_acquisition_workflow"
+    },
+    {
+      "grid_id": "SSM-B001-G02",
+      "block_id": "SSM-B001",
+      "bbox_wgs84": [
+        135.515167,
+        34.603375,
+        135.517833,
+        34.606
+      ],
+      "zoom": 18,
+      "scope_status": "provisional_scope_needs_geographic_verification",
+      "source_tiles_ready": 0,
+      "source_tiles_missing_or_failed": 9,
+      "mosaic_status": "not_generated",
+      "mosaic_relpath": "",
+      "mosaic_sha256": "",
+      "missing_tiles": "",
+      "interpretation_status": "not_interpreted_by_acquisition_workflow"
+    },
+    {
+      "grid_id": "SSM-B001-G03",
+      "block_id": "SSM-B001",
+      "bbox_wgs84": [
+        135.517833,
+        34.603375,
+        135.5205,
+        34.606
+      ],
+      "zoom": 18,
+      "scope_status": "provisional_scope_needs_geographic_verification",
+      "source_tiles_ready": 0,
+      "source_tiles_missing_or_failed": 9,
+      "mosaic_status": "not_generated",
+      "mosaic_relpath": "",
+      "mosaic_sha256": "",
+      "missing_tiles": "",
+      "interpretation_status": "not_interpreted_by_acquisition_workflow"
+    },
+    {
+      "grid_id": "SSM-B001-G04",
+      "block_id": "SSM-B001",
+      "bbox_wgs84": [
+        135.5125,
+        34.60075,
+        135.515167,
+        34.603375
+      ],
+      "zoom": 18,
+      "scope_status": "provisional_scope_needs_geographic_verification",
+      "source_tiles_ready": 9,
+      "source_tiles_missing_or_failed": 0,
+      "mosaic_status": "complete",
+      "mosaic_relpath": "mosaics/ort_riku10/SSM-B001-G04_z18.png",
+      "mosaic_sha256": "54e86f6ee7c161028c605c021cfd8377c06063646bc39360ed86348555205475",
+      "missing_tiles": "",
+      "interpretation_status": "not_interpreted_by_acquisition_workflow"
+    },
+    {
+      "grid_id": "SSM-B001-G05",
+      "block_id": "SSM-B001",
+      "bbox_wgs84": [
+        135.515167,
+        34.60075,
+        135.517833,
+        34.603375
+      ],
+      "zoom": 18,
+      "scope_status": "provisional_scope_needs_geographic_verification",
+      "source_tiles_ready": 0,
+      "source_tiles_missing_or_failed": 9,
+      "mosaic_status": "not_generated",
+      "mosaic_relpath": "",
+      "mosaic_sha256": "",
+      "missing_tiles": "",
+      "interpretation_status": "not_interpreted_by_acquisition_workflow"
+    },
+    {
+      "grid_id": "SSM-B001-G06",
+      "block_id": "SSM-B001",
+      "bbox_wgs84": [
+        135.517833,
+        34.60075,
+        135.5205,
+        34.603375
+      ],
+      "zoom": 18,
+      "scope_status": "provisional_scope_needs_geographic_verification",
+      "source_tiles_ready": 0,
+      "source_tiles_missing_or_failed": 9,
+      "mosaic_status": "not_generated",
+      "mosaic_relpath": "",
+      "mosaic_sha256": "",
+      "missing_tiles": "",
+      "interpretation_status": "not_interpreted_by_acquisition_workflow"
+    },
+    {
+      "grid_id": "SSM-B001-G07",
+      "block_id": "SSM-B001",
+      "bbox_wgs84": [
+        135.5125,
+        34.598125,
+        135.515167,
+        34.60075
+      ],
+      "zoom": 18,
+      "scope_status": "provisional_scope_needs_geographic_verification",
+      "source_tiles_ready": 0,
+      "source_tiles_missing_or_failed": 12,
+      "mosaic_status": "not_generated",
+      "mosaic_relpath": "",
+      "mosaic_sha256": "",
+      "missing_tiles": "",
+      "interpretation_status": "not_interpreted_by_acquisition_workflow"
+    },
+    {
+      "grid_id": "SSM-B001-G08",
+      "block_id": "SSM-B001",
+      "bbox_wgs84": [
+        135.515167,
+        34.598125,
+        135.517833,
+        34.60075
+      ],
+      "zoom": 18,
+      "scope_status": "provisional_scope_needs_geographic_verification",
+      "source_tiles_ready": 0,
+      "source_tiles_missing_or_failed": 12,
+      "mosaic_status": "not_generated",
+      "mosaic_relpath": "",
+      "mosaic_sha256": "",
+      "missing_tiles": "",
+      "interpretation_status": "not_interpreted_by_acquisition_workflow"
+    },
+    {
+      "grid_id": "SSM-B001-G09",
+      "block_id": "SSM-B001",
+      "bbox_wgs84": [
+        135.517833,
+        34.598125,
+        135.5205,
+        34.60075
+      ],
+      "zoom": 18,
+      "scope_status": "provisional_scope_needs_geographic_verification",
+      "source_tiles_ready": 0,
+      "source_tiles_missing_or_failed": 12,
+      "mosaic_status": "not_generated",
+      "mosaic_relpath": "",
+      "mosaic_sha256": "",
+      "missing_tiles": "",
+      "interpretation_status": "not_interpreted_by_acquisition_workflow"
+    },
+    {
+      "grid_id": "SSM-B001-G10",
+      "block_id": "SSM-B001",
+      "bbox_wgs84": [
+        135.5125,
+        34.5955,
+        135.515167,
+        34.598125
+      ],
+      "zoom": 18,
+      "scope_status": "provisional_scope_needs_geographic_verification",
+      "source_tiles_ready": 0,
+      "source_tiles_missing_or_failed": 9,
+      "mosaic_status": "not_generated",
+      "mosaic_relpath": "",
+      "mosaic_sha256": "",
+      "missing_tiles": "",
+      "interpretation_status": "not_interpreted_by_acquisition_workflow"
+    },
+    {
+      "grid_id": "SSM-B001-G11",
+      "block_id": "SSM-B001",
+      "bbox_wgs84": [
+        135.515167,
+        34.5955,
+        135.517833,
+        34.598125
+      ],
+      "zoom": 18,
+      "scope_status": "provisional_scope_needs_geographic_verification",
+      "source_tiles_ready": 0,
+      "source_tiles_missing_or_failed": 9,
+      "mosaic_status": "not_generated",
+      "mosaic_relpath": "",
+      "mosaic_sha256": "",
+      "missing_tiles": "",
+      "interpretation_status": "not_interpreted_by_acquisition_workflow"
+    },
+    {
+      "grid_id": "SSM-B001-G12",
+      "block_id": "SSM-B001",
+      "bbox_wgs84": [
+        135.517833,
+        34.5955,
+        135.5205,
+        34.598125
+      ],
+      "zoom": 18,
+      "scope_status": "provisional_scope_needs_geographic_verification",
+      "source_tiles_ready": 0,
+      "source_tiles_missing_or_failed": 9,
+      "mosaic_status": "not_generated",
+      "mosaic_relpath": "",
+      "mosaic_sha256": "",
+      "missing_tiles": "",
+      "interpretation_status": "not_interpreted_by_acquisition_workflow"
+    }
+  ]
 }
