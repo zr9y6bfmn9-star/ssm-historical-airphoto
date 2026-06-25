@@ -1,9 +1,9 @@
 {
-  "generated_utc": "2026-06-25T15:27:42Z",
+  "generated_utc": "2026-06-25T22:16:23Z",
   "scan_zoom": 17,
   "cells_total": 1422,
-  "cells_complete": 24,
-  "cells_pending": 1398,
+  "cells_complete": 48,
+  "cells_pending": 1374,
   "cells_completed_this_run": 24,
   "errors": [
     {

@@ -1,0 +1,121 @@
+{
+  "scan_cell_id": "OHG-Z17-X114852-Y52004",
+  "source_name": "国土地理院 地理院タイル 空中写真（1936年〜1942年頃） ort_riku10",
+  "zoom": 17,
+  "assembled_utc": "2026-06-25T22:15:18Z",
+  "tiles": [
+    {
+      "tile_id": "ort_riku10/17/114852/52004",
+      "url": "https://cyberjapandata.gsi.go.jp/xyz/ort_riku10/17/114852/52004.png",
+      "sha256": "9903d379f6d77ad3935449ffa865ac74ff0f7596d5f3a0f7f2fd3872d937e383",
+      "x": 114852,
+      "y": 52004
+    },
+    {
+      "tile_id": "ort_riku10/17/114853/52004",
+      "url": "https://cyberjapandata.gsi.go.jp/xyz/ort_riku10/17/114853/52004.png",
+      "sha256": "338b093123081dd3bb9b314ce4db1ee0cd17413ad9ed45d60a642a557f0c027d",
+      "x": 114853,
+      "y": 52004
+    },
+    {
+      "tile_id": "ort_riku10/17/114854/52004",
+      "url": "https://cyberjapandata.gsi.go.jp/xyz/ort_riku10/17/114854/52004.png",
+      "sha256": "eeb2c728eb8d61353d15b794bb48bd0a355ec381e83ec2d77124292f9bbcaadc",
+      "x": 114854,
+      "y": 52004
+    },
+    {
+      "tile_id": "ort_riku10/17/114855/52004",
+      "url": "https://cyberjapandata.gsi.go.jp/xyz/ort_riku10/17/114855/52004.png",
+      "sha256": "6af132e3f5ac7ec2a7d7bc5b2f22f662916beb88b61fdf339ec616c750633c3c",
+      "x": 114855,
+      "y": 52004
+    },
+    {
+      "tile_id": "ort_riku10/17/114852/52005",
+      "url": "https://cyberjapandata.gsi.go.jp/xyz/ort_riku10/17/114852/52005.png",
+      "sha256": "9287ddaefadf34414023c487b121c22129054ee012dded2d1aa8cdef2f8a3836",
+      "x": 114852,
+      "y": 52005
+    },
+    {
+      "tile_id": "ort_riku10/17/114853/52005",
+      "url": "https://cyberjapandata.gsi.go.jp/xyz/ort_riku10/17/114853/52005.png",
+      "sha256": "89a1a634e019634bf4e12d79baa99a1624bdda6039728e90a5ca1ceb4fdc1aae",
+      "x": 114853,
+      "y": 52005
+    },
+    {
+      "tile_id": "ort_riku10/17/114854/52005",
+      "url": "https://cyberjapandata.gsi.go.jp/xyz/ort_riku10/17/114854/52005.png",
+      "sha256": "af0aaab0cd56966f7a0e2257aff0f79a7c92097e9eff9ceb0958973812aa3d58",
+      "x": 114854,
+      "y": 52005
+    },
+    {
+      "tile_id": "ort_riku10/17/114855/52005",
+      "url": "https://cyberjapandata.gsi.go.jp/xyz/ort_riku10/17/114855/52005.png",
+      "sha256": "42fa0afea085d8af10b25d32cdb760557bb8e448af3047c8b60bf233baeda276",
+      "x": 114855,
+      "y": 52005
+    },
+    {
+      "tile_id": "ort_riku10/17/114852/52006",
+      "url": "https://cyberjapandata.gsi.go.jp/xyz/ort_riku10/17/114852/52006.png",
+      "sha256": "4572d7bad5cebd9f00a988c67268a764e905f403f3d8ff93559c54ecd544fdde",
+      "x": 114852,
+      "y": 52006
+    },
+    {
+      "tile_id": "ort_riku10/17/114853/52006",
+      "url": "https://cyberjapandata.gsi.go.jp/xyz/ort_riku10/17/114853/52006.png",
+      "sha256": "2a01d0801bf38a41f3f0a51551f4ee9a675a758f62ada4a78aac8ac06a3f0fe2",
+      "x": 114853,
+      "y": 52006
+    },
+    {
+      "tile_id": "ort_riku10/17/114854/52006",
+      "url": "https://cyberjapandata.gsi.go.jp/xyz/ort_riku10/17/114854/52006.png",
+      "sha256": "8e018a6b699d359343adc85ad65eb57fd9aa239fcbec6b88a2ca31ba27c3c3c1",
+      "x": 114854,
+      "y": 52006
+    },
+    {
+      "tile_id": "ort_riku10/17/114855/52006",
+      "url": "https://cyberjapandata.gsi.go.jp/xyz/ort_riku10/17/114855/52006.png",
+      "sha256": "0229aa9f1dd60ffe48b76dced63b91ee675dce24db8c2443e8aad8ae3c9ce84e",
+      "x": 114855,
+      "y": 52006
+    },
+    {
+      "tile_id": "ort_riku10/17/114852/52007",
+      "url": "https://cyberjapandata.gsi.go.jp/xyz/ort_riku10/17/114852/52007.png",
+      "sha256": "d1486a9cef3edcccacfba5e0844c6d0a5589b5a058a5542dac684d90c2967bfc",
+      "x": 114852,
+      "y": 52007
+    },
+    {
+      "tile_id": "ort_riku10/17/114853/52007",
+      "url": "https://cyberjapandata.gsi.go.jp/xyz/ort_riku10/17/114853/52007.png",
+      "sha256": "a8b3b865446f7bde52975ca19d8de16947c3809b76fc1e6e917ac9f2370173b5",
+      "x": 114853,
+      "y": 52007
+    },
+    {
+      "tile_id": "ort_riku10/17/114854/52007",
+      "url": "https://cyberjapandata.gsi.go.jp/xyz/ort_riku10/17/114854/52007.png",
+      "sha256": "e73cb0405a2a1b721d396fe7e66b29903dc6341fec36568cdb9276b7043c96aa",
+      "x": 114854,
+      "y": 52007
+    },
+    {
+      "tile_id": "ort_riku10/17/114855/52007",
+      "url": "https://cyberjapandata.gsi.go.jp/xyz/ort_riku10/17/114855/52007.png",
+      "sha256": "f55bf0ebbe035e7f756e8e80a6b983ebfc71d09f63a95a23f01c4c3d398215d4",
+      "x": 114855,
+      "y": 52007
+    }
+  ],
+  "method": "Exact 4x4 source-tile assembly at native 256px tiles; no resampling."
+}
