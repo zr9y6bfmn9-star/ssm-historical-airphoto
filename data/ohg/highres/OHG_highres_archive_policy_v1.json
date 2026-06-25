@@ -1,0 +1,23 @@
+{
+  "policy_version": "1.0",
+  "purpose": "Candidate-only high-resolution retrieval and archive control.",
+  "main_repository_policy": "No raw source tiles or native-resolution candidate mosaics are committed to normal Git history.",
+  "archive_backend": "private GitHub Release asset, or an explicitly selected private external archive.",
+  "privacy_gate": "Do not upload candidate high-resolution packages to a public repository.",
+  "candidate_package_contents": [
+    "high-resolution mosaic",
+    "source-tile manifest with URLs and SHA256",
+    "provenance JSON",
+    "SHA256SUMS"
+  ],
+  "request_lifecycle": [
+    "not_requested",
+    "requested",
+    "approved",
+    "packaged",
+    "archived",
+    "verified",
+    "blocked"
+  ],
+  "note": "This file is a policy and queue definition only. It contains no candidate image."
+}
