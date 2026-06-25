@@ -1,0 +1,13 @@
+grid_id,mosaic_status,source_tiles_ready,source_tiles_missing_or_failed,mosaic_relpath
+SSM-B001-G01,complete,9,0,mosaics/ort_riku10/SSM-B001-G01_z18.png
+SSM-B001-G02,complete,9,0,mosaics/ort_riku10/SSM-B001-G02_z18.png
+SSM-B001-G03,not_generated,0,9,
+SSM-B001-G04,complete,9,0,mosaics/ort_riku10/SSM-B001-G04_z18.png
+SSM-B001-G05,complete,9,0,mosaics/ort_riku10/SSM-B001-G05_z18.png
+SSM-B001-G06,not_generated,0,9,
+SSM-B001-G07,not_generated,0,12,
+SSM-B001-G08,not_generated,0,12,
+SSM-B001-G09,not_generated,0,12,
+SSM-B001-G10,not_generated,0,9,
+SSM-B001-G11,not_generated,0,9,
+SSM-B001-G12,not_generated,0,9,
