@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "generated_utc": "2026-06-25T14:39:12Z",
+  "generated_utc": "2026-06-25T14:49:15Z",
   "block_id": "SSM-B001",
   "purpose": "Auditable acquisition bridge for historical-airphoto candidate extraction. No candidate interpretation is made here.",
   "source": {
@@ -178,11 +178,11 @@
       ],
       "zoom": 18,
       "scope_status": "provisional_scope_needs_geographic_verification",
-      "source_tiles_ready": 0,
-      "source_tiles_missing_or_failed": 12,
-      "mosaic_status": "not_generated",
-      "mosaic_relpath": "",
-      "mosaic_sha256": "",
+      "source_tiles_ready": 12,
+      "source_tiles_missing_or_failed": 0,
+      "mosaic_status": "complete",
+      "mosaic_relpath": "mosaics/ort_riku10/SSM-B001-G09_z18.png",
+      "mosaic_sha256": "2771940135480fb8b719390228b67d2f55b4fbe2abdfc8d12987f23ec6f099c4",
       "missing_tiles": "",
       "interpretation_status": "not_interpreted_by_acquisition_workflow"
     },
@@ -235,11 +235,11 @@
       ],
       "zoom": 18,
       "scope_status": "provisional_scope_needs_geographic_verification",
-      "source_tiles_ready": 0,
-      "source_tiles_missing_or_failed": 9,
-      "mosaic_status": "not_generated",
-      "mosaic_relpath": "",
-      "mosaic_sha256": "",
+      "source_tiles_ready": 9,
+      "source_tiles_missing_or_failed": 0,
+      "mosaic_status": "complete",
+      "mosaic_relpath": "mosaics/ort_riku10/SSM-B001-G12_z18.png",
+      "mosaic_sha256": "40e4e089c588ece949fd06c2e18701b1db59b661d89729efa0f815a97d6076f8",
       "missing_tiles": "",
       "interpretation_status": "not_interpreted_by_acquisition_workflow"
     }
