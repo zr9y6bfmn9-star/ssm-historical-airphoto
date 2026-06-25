@@ -1,0 +1,212 @@
+name: Continue acquisition autoqueue
+
+on:
+  workflow_dispatch:
+    inputs:
+      max_new_tiles_override:
+        description: "Optional override for network cap (blank = use run_order.csv)"
+        required: false
+        default: ""
+        type: string
+      force_redownload:
+        description: "Re-fetch existing valid tiles"
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ssm-b001-acquisition-autoqueue
+  cancel-in-progress: false
+
+jobs:
+  continue-acquisition:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip && pip install -r requirements.txt pillow
+
+      - name: Resolve next pending batch
+        id: queue
+        run: |
+          python - <<'PY'
+          import csv, json, os
+          from pathlib import Path
+
+          run_order = Path('config/run_order.csv')
+          manifest_path = Path('data/manifests/manifest.json')
+          if not run_order.exists():
+              raise FileNotFoundError('config/run_order.csv not found')
+
+          with run_order.open('r', encoding='utf-8-sig', newline='') as f:
+              rows = list(csv.DictReader(f))
+
+          manifest = None
+          if manifest_path.exists():
+              manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
+              by_grid = {g['grid_id']: g for g in manifest.get('grids', [])}
+          else:
+              by_grid = {}
+
+          next_row = None
+          for row in rows:
+              gids = [x.strip() for x in row['grid_ids'].split(',') if x.strip()]
+              done = True
+              if not by_grid:
+                  done = False
+              else:
+                  for gid in gids:
+                      g = by_grid.get(gid)
+                      if not g:
+                          done = False
+                          break
+                      if g.get('mosaic_status') != 'complete' or int(g.get('source_tiles_missing_or_failed', 0)) > 0:
+                          done = False
+                          break
+              if not done:
+                  next_row = row
+                  break
+
+          gh = Path(os.environ['GITHUB_OUTPUT'])
+          if next_row is None:
+              with gh.open('a', encoding='utf-8') as f:
+                  f.write('no_work=true\n')
+                  f.write('queue_summary=All configured batches are already complete.\n')
+              print('All configured batches are already complete.')
+          else:
+              max_tiles = (os.environ.get('MAX_NEW_TILES_OVERRIDE') or '').strip() or next_row['max_new_tiles']
+              with gh.open('a', encoding='utf-8') as f:
+                  f.write('no_work=false\n')
+                  f.write(f"run_id={next_row['run_id']}\n")
+                  f.write(f"grid_ids={next_row['grid_ids']}\n")
+                  f.write(f"max_new_tiles={max_tiles}\n")
+                  f.write(f"queue_summary=Next batch: {next_row['run_id']} / {next_row['grid_ids']} / max_new_tiles={max_tiles}\n")
+              print(json.dumps({
+                  'run_id': next_row['run_id'],
+                  'grid_ids': next_row['grid_ids'],
+                  'max_new_tiles': max_tiles,
+                  'purpose': next_row.get('purpose', ''),
+                  'next_step': next_row.get('next_step', '')
+              }, ensure_ascii=False))
+          PY
+        env:
+          MAX_NEW_TILES_OVERRIDE: ${{ inputs.max_new_tiles_override }}
+
+      - name: Stop if no pending work
+        if: steps.queue.outputs.no_work == 'true'
+        run: echo "${{ steps.queue.outputs.queue_summary }}"
+
+      - name: Acquire next batch
+        if: steps.queue.outputs.no_work != 'true'
+        env:
+          RUN_ID: ${{ steps.queue.outputs.run_id }}
+          GRID_IDS: ${{ steps.queue.outputs.grid_ids }}
+          MAX_NEW_TILES: ${{ steps.queue.outputs.max_new_tiles }}
+          FORCE_REDOWNLOAD: ${{ inputs.force_redownload }}
+        run: |
+          FLAGS=""
+          if [ "$FORCE_REDOWNLOAD" = "true" ]; then FLAGS="--force-redownload"; fi
+          python scripts/acquire_ort_riku10.py \
+            --run-id "$RUN_ID" \
+            --grid-ids "$GRID_IDS" \
+            --max-new-tiles "$MAX_NEW_TILES" \
+            $FLAGS
+
+      - name: Rebuild lightweight acquisition audit mosaic
+        if: steps.queue.outputs.no_work != 'true'
+        run: |
+          python - <<'PY'
+          import csv, json
+          from pathlib import Path
+          from PIL import Image, ImageDraw, ImageFont
+
+          manifest_path = Path('data/manifests/manifest.json')
+          manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
+          grids = manifest.get('grids', [])
+          xs = sorted({round(g['bbox_wgs84'][0], 9) for g in grids})
+          y_tops = sorted({round(g['bbox_wgs84'][3], 9) for g in grids}, reverse=True)
+          x_index = {x: i for i, x in enumerate(xs)}
+          y_index = {y: i for i, y in enumerate(y_tops)}
+          tile_px = 220
+          pad = 8
+          header_h = 90
+          footer_h = 24
+          canvas = Image.new('RGB', (len(xs)*tile_px + pad*2, len(y_tops)*tile_px + header_h + footer_h + pad*2), 'white')
+          draw = ImageDraw.Draw(canvas)
+          font = ImageFont.load_default()
+          draw.text((pad, 8), f"{manifest.get('block_id','block')} acquisition audit mosaic", fill='black', font=font)
+          draw.text((pad, 28), f"Manifest UTC: {manifest.get('generated_utc','')}", fill='black', font=font)
+          draw.text((pad, 48), 'Filled = mosaic exists / Blank = not yet acquired', fill='black', font=font)
+          ready = 0
+          for g in grids:
+              bbox = g['bbox_wgs84']
+              c = x_index[round(bbox[0], 9)]
+              r = y_index[round(bbox[3], 9)]
+              x0 = pad + c*tile_px
+              y0 = header_h + pad + r*tile_px
+              x1 = x0 + tile_px
+              y1 = y0 + tile_px
+              rel = g.get('mosaic_relpath','')
+              p = Path('data') / rel if rel else None
+              if rel and p.exists():
+                  ready += 1
+                  img = Image.open(p).convert('RGB')
+                  img.thumbnail((tile_px - 2, tile_px - 22))
+                  canvas.paste(img, (x0 + (tile_px - img.width)//2, y0 + 18 + (tile_px - 22 - img.height)//2))
+              else:
+                  draw.rectangle([x0, y0, x1, y1], fill='white', outline='lightgray', width=2)
+                  draw.line([x0, y0, x1, y1], fill='lightgray', width=1)
+                  draw.line([x1, y0, x0, y1], fill='lightgray', width=1)
+                  draw.text((x0 + 8, y0 + tile_px//2 - 8), 'blank', fill='gray', font=font)
+              draw.rectangle([x0, y0, x1, y1], outline='black', width=1)
+              draw.rectangle([x0, y0, x1, y0+18], fill='white')
+              draw.text((x0 + 4, y0 + 4), g['grid_id'], fill='black', font=font)
+              draw.rectangle([x0, y1-30, x1, y1], fill='white')
+              draw.text((x0 + 4, y1-28), g.get('mosaic_status','')[:28], fill='black', font=font)
+              draw.text((x0 + 4, y1-16), f"tiles {g.get('source_tiles_ready',0)}/{g.get('source_tiles_ready',0)+g.get('source_tiles_missing_or_failed',0)}", fill='black', font=font)
+          draw.text((pad, canvas.height-footer_h), f"ready cells: {ready}/{len(grids)}", fill='black', font=font)
+          audit_dir = Path('data/audit'); audit_dir.mkdir(parents=True, exist_ok=True)
+          png = audit_dir / f"{manifest.get('block_id','block')}_acquisition_audit_mosaic.png"
+          jpg = audit_dir / f"{manifest.get('block_id','block')}_acquisition_audit_mosaic_lowq.jpg"
+          csv_path = audit_dir / f"{manifest.get('block_id','block')}_acquisition_audit_status.csv"
+          canvas.save(png)
+          canvas.save(jpg, quality=60, optimize=True)
+          with csv_path.open('w', encoding='utf-8', newline='') as f:
+              fieldnames = ['grid_id','mosaic_status','source_tiles_ready','source_tiles_missing_or_failed','mosaic_relpath']
+              w = csv.DictWriter(f, fieldnames=fieldnames)
+              w.writeheader()
+              for g in grids:
+                  w.writerow({k: g.get(k, '') for k in fieldnames})
+          print(f'Updated audit mosaic: {png}')
+          PY
+
+      - name: Commit outputs
+        if: steps.queue.outputs.no_work != 'true'
+        run: |
+          git config user.name "ssm-airphoto-bot"
+          git config user.email "ssm-airphoto-bot@users.noreply.github.com"
+          git add data/
+          if git diff --cached --quiet; then
+            echo "No generated changes to commit."
+          else
+            git commit -m "data: continue acquisition ${{ steps.queue.outputs.run_id }}"
+            git push
+          fi
+
+      - name: Final summary
+        run: |
+          echo "${{ steps.queue.outputs.queue_summary }}"
