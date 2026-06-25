@@ -1,0 +1,13 @@
+{
+  "generated_utc": "2026-06-25T15:19:36Z",
+  "scope_unit_count": 50,
+  "scan_zoom": 17,
+  "cell_tile_dimension": 4,
+  "context_buffer_m": 750,
+  "geometry_source": "niiyz/JapanCityGeoJson (N03 2020-derived)",
+  "geometry_source_warning": "Operational provisional geometry. Official MLIT N03 2026 ingest remains a separate QA step.",
+  "historical_boundary_claim": "none",
+  "cell_count": 1422,
+  "asset_method": "Each completed scan cell is an exact 4x4 assembly of source PNG tiles, retained at native pixels; source tile URLs and SHA256 hashes are kept per cell.",
+  "audit_method": "A downsampled full-scope overview leaves incomplete scan cells white."
+}

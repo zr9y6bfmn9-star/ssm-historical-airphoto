@@ -1,0 +1,941 @@
+{
+  "generated_utc": "2026-06-25T15:27:42Z",
+  "scan_zoom": 17,
+  "cells_total": 1422,
+  "cells_complete": 24,
+  "cells_pending": 1398,
+  "cells_completed_this_run": 24,
+  "errors": [
+    {
+      "scan_cell_id": "OHG-Z17-X114808-Y51892",
+      "error": "failed_tile 114808/51892: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114812-Y51892",
+      "error": "failed_tile 114812/51892: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114816-Y51892",
+      "error": "failed_tile 114816/51892: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114820-Y51892",
+      "error": "failed_tile 114820/51892: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114824-Y51892",
+      "error": "failed_tile 114824/51892: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114804-Y51896",
+      "error": "failed_tile 114804/51896: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114808-Y51896",
+      "error": "failed_tile 114808/51896: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114812-Y51896",
+      "error": "failed_tile 114812/51896: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114816-Y51896",
+      "error": "failed_tile 114816/51896: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114820-Y51896",
+      "error": "failed_tile 114820/51896: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114824-Y51896",
+      "error": "failed_tile 114824/51896: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114828-Y51896",
+      "error": "failed_tile 114828/51896: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114804-Y51900",
+      "error": "failed_tile 114804/51900: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114808-Y51900",
+      "error": "failed_tile 114808/51900: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114812-Y51900",
+      "error": "failed_tile 114812/51900: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114816-Y51900",
+      "error": "failed_tile 114816/51900: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114820-Y51900",
+      "error": "failed_tile 114820/51900: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114824-Y51900",
+      "error": "failed_tile 114824/51900: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114828-Y51900",
+      "error": "failed_tile 114828/51900: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114804-Y51904",
+      "error": "failed_tile 114804/51904: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114808-Y51904",
+      "error": "failed_tile 114808/51904: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114812-Y51904",
+      "error": "failed_tile 114812/51904: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114816-Y51904",
+      "error": "failed_tile 114816/51904: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114820-Y51904",
+      "error": "failed_tile 114820/51904: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114824-Y51904",
+      "error": "failed_tile 114824/51904: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114828-Y51904",
+      "error": "failed_tile 114828/51904: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114808-Y51908",
+      "error": "failed_tile 114808/51908: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114812-Y51908",
+      "error": "failed_tile 114812/51908: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114816-Y51908",
+      "error": "failed_tile 114816/51908: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114820-Y51908",
+      "error": "failed_tile 114820/51908: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114824-Y51908",
+      "error": "failed_tile 114824/51908: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114828-Y51908",
+      "error": "failed_tile 114828/51908: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114832-Y51908",
+      "error": "failed_tile 114832/51908: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114836-Y51908",
+      "error": "failed_tile 114836/51908: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114840-Y51908",
+      "error": "failed_tile 114840/51908: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114844-Y51908",
+      "error": "failed_tile 114844/51908: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114848-Y51908",
+      "error": "failed_tile 114848/51908: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114812-Y51912",
+      "error": "failed_tile 114812/51912: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114816-Y51912",
+      "error": "failed_tile 114816/51912: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114820-Y51912",
+      "error": "failed_tile 114820/51912: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114824-Y51912",
+      "error": "failed_tile 114824/51912: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114828-Y51912",
+      "error": "failed_tile 114828/51912: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114832-Y51912",
+      "error": "failed_tile 114832/51912: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114836-Y51912",
+      "error": "failed_tile 114836/51912: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114840-Y51912",
+      "error": "failed_tile 114840/51912: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114844-Y51912",
+      "error": "failed_tile 114844/51912: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114848-Y51912",
+      "error": "failed_tile 114848/51912: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114852-Y51912",
+      "error": "failed_tile 114852/51912: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114856-Y51912",
+      "error": "failed_tile 114856/51912: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114812-Y51916",
+      "error": "failed_tile 114812/51916: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114816-Y51916",
+      "error": "failed_tile 114816/51916: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114820-Y51916",
+      "error": "failed_tile 114820/51916: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114824-Y51916",
+      "error": "failed_tile 114824/51916: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114828-Y51916",
+      "error": "failed_tile 114828/51916: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114832-Y51916",
+      "error": "failed_tile 114832/51916: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114836-Y51916",
+      "error": "failed_tile 114836/51916: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114840-Y51916",
+      "error": "failed_tile 114840/51916: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114844-Y51916",
+      "error": "failed_tile 114844/51916: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114848-Y51916",
+      "error": "failed_tile 114848/51916: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114852-Y51916",
+      "error": "failed_tile 114852/51916: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114856-Y51916",
+      "error": "failed_tile 114856/51916: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114860-Y51916",
+      "error": "failed_tile 114860/51916: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114864-Y51916",
+      "error": "failed_tile 114864/51916: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114868-Y51916",
+      "error": "failed_tile 114868/51916: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114812-Y51920",
+      "error": "failed_tile 114812/51920: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114816-Y51920",
+      "error": "failed_tile 114816/51920: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114820-Y51920",
+      "error": "failed_tile 114820/51920: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114824-Y51920",
+      "error": "failed_tile 114824/51920: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114828-Y51920",
+      "error": "failed_tile 114828/51920: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114832-Y51920",
+      "error": "failed_tile 114832/51920: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114836-Y51920",
+      "error": "failed_tile 114836/51920: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114840-Y51920",
+      "error": "failed_tile 114840/51920: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114844-Y51920",
+      "error": "failed_tile 114844/51920: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114848-Y51920",
+      "error": "failed_tile 114848/51920: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114852-Y51920",
+      "error": "failed_tile 114852/51920: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114856-Y51920",
+      "error": "failed_tile 114856/51920: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114860-Y51920",
+      "error": "failed_tile 114860/51920: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114864-Y51920",
+      "error": "failed_tile 114864/51920: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114868-Y51920",
+      "error": "failed_tile 114868/51920: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114812-Y51924",
+      "error": "failed_tile 114812/51924: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114816-Y51924",
+      "error": "failed_tile 114816/51924: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114820-Y51924",
+      "error": "failed_tile 114820/51924: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114824-Y51924",
+      "error": "failed_tile 114824/51924: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114828-Y51924",
+      "error": "failed_tile 114828/51924: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114832-Y51924",
+      "error": "failed_tile 114832/51924: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114836-Y51924",
+      "error": "failed_tile 114836/51924: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114840-Y51924",
+      "error": "failed_tile 114840/51924: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114844-Y51924",
+      "error": "failed_tile 114844/51924: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114848-Y51924",
+      "error": "failed_tile 114848/51924: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114852-Y51924",
+      "error": "failed_tile 114852/51924: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114856-Y51924",
+      "error": "failed_tile 114856/51924: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114860-Y51924",
+      "error": "failed_tile 114860/51924: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114864-Y51924",
+      "error": "failed_tile 114864/51924: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114868-Y51924",
+      "error": "failed_tile 114868/51924: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114808-Y51928",
+      "error": "failed_tile 114808/51928: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114812-Y51928",
+      "error": "failed_tile 114812/51928: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114816-Y51928",
+      "error": "failed_tile 114816/51928: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114820-Y51928",
+      "error": "failed_tile 114820/51928: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114824-Y51928",
+      "error": "failed_tile 114824/51928: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114828-Y51928",
+      "error": "failed_tile 114828/51928: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114832-Y51928",
+      "error": "failed_tile 114832/51928: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114836-Y51928",
+      "error": "failed_tile 114836/51928: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114840-Y51928",
+      "error": "failed_tile 114840/51928: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114844-Y51928",
+      "error": "failed_tile 114844/51928: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114848-Y51928",
+      "error": "failed_tile 114848/51928: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114852-Y51928",
+      "error": "failed_tile 114852/51928: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114856-Y51928",
+      "error": "failed_tile 114856/51928: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114860-Y51928",
+      "error": "failed_tile 114860/51928: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114864-Y51928",
+      "error": "failed_tile 114864/51928: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114868-Y51928",
+      "error": "failed_tile 114868/51928: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114808-Y51932",
+      "error": "failed_tile 114808/51932: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114812-Y51932",
+      "error": "failed_tile 114812/51932: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114816-Y51932",
+      "error": "failed_tile 114816/51932: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114820-Y51932",
+      "error": "failed_tile 114820/51932: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114824-Y51932",
+      "error": "failed_tile 114824/51932: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114828-Y51932",
+      "error": "failed_tile 114828/51932: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114832-Y51932",
+      "error": "failed_tile 114832/51932: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114836-Y51932",
+      "error": "failed_tile 114836/51932: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114840-Y51932",
+      "error": "failed_tile 114840/51932: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114844-Y51932",
+      "error": "failed_tile 114844/51932: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114848-Y51932",
+      "error": "failed_tile 114848/51932: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114852-Y51932",
+      "error": "failed_tile 114852/51932: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114856-Y51932",
+      "error": "failed_tile 114856/51932: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114860-Y51932",
+      "error": "failed_tile 114860/51932: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114864-Y51932",
+      "error": "failed_tile 114864/51932: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114868-Y51932",
+      "error": "failed_tile 114868/51932: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114812-Y51936",
+      "error": "failed_tile 114812/51936: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114816-Y51936",
+      "error": "failed_tile 114816/51936: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114820-Y51936",
+      "error": "failed_tile 114820/51936: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114824-Y51936",
+      "error": "failed_tile 114824/51936: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114828-Y51936",
+      "error": "failed_tile 114828/51936: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114832-Y51936",
+      "error": "failed_tile 114832/51936: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114836-Y51936",
+      "error": "failed_tile 114836/51936: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114840-Y51936",
+      "error": "failed_tile 114840/51936: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114844-Y51936",
+      "error": "failed_tile 114844/51936: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114848-Y51936",
+      "error": "failed_tile 114848/51936: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114852-Y51936",
+      "error": "failed_tile 114852/51936: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114856-Y51936",
+      "error": "failed_tile 114856/51936: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114860-Y51936",
+      "error": "failed_tile 114860/51936: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114864-Y51936",
+      "error": "failed_tile 114864/51936: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114816-Y51940",
+      "error": "failed_tile 114816/51940: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114820-Y51940",
+      "error": "failed_tile 114820/51940: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114824-Y51940",
+      "error": "failed_tile 114824/51940: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114828-Y51940",
+      "error": "failed_tile 114828/51940: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114832-Y51940",
+      "error": "failed_tile 114832/51940: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114836-Y51940",
+      "error": "failed_tile 114836/51940: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114840-Y51940",
+      "error": "failed_tile 114840/51940: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114844-Y51940",
+      "error": "failed_tile 114844/51940: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114848-Y51940",
+      "error": "failed_tile 114848/51940: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114852-Y51940",
+      "error": "failed_tile 114852/51940: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114856-Y51940",
+      "error": "failed_tile 114856/51940: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114860-Y51940",
+      "error": "failed_tile 114860/51940: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114864-Y51940",
+      "error": "failed_tile 114864/51940: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114824-Y51944",
+      "error": "failed_tile 114824/51944: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114828-Y51944",
+      "error": "failed_tile 114828/51944: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114832-Y51944",
+      "error": "failed_tile 114832/51944: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114836-Y51944",
+      "error": "failed_tile 114836/51944: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114840-Y51944",
+      "error": "failed_tile 114840/51944: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114844-Y51944",
+      "error": "failed_tile 114844/51944: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114848-Y51944",
+      "error": "failed_tile 114848/51944: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114852-Y51944",
+      "error": "failed_tile 114852/51944: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114856-Y51944",
+      "error": "failed_tile 114856/51944: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114860-Y51944",
+      "error": "failed_tile 114860/51944: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114864-Y51944",
+      "error": "failed_tile 114864/51944: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114836-Y51948",
+      "error": "failed_tile 114836/51948: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114840-Y51948",
+      "error": "failed_tile 114840/51948: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114844-Y51948",
+      "error": "failed_tile 114844/51948: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114848-Y51948",
+      "error": "failed_tile 114848/51948: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114852-Y51948",
+      "error": "failed_tile 114852/51948: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114856-Y51948",
+      "error": "failed_tile 114856/51948: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114860-Y51948",
+      "error": "failed_tile 114860/51948: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114852-Y51952",
+      "error": "failed_tile 114852/51952: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114856-Y51952",
+      "error": "failed_tile 114856/51952: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114860-Y51952",
+      "error": "failed_tile 114860/51952: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114852-Y51956",
+      "error": "failed_tile 114852/51956: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114856-Y51956",
+      "error": "failed_tile 114856/51956: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114860-Y51956",
+      "error": "failed_tile 114860/51956: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114864-Y51956",
+      "error": "failed_tile 114864/51956: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114844-Y51960",
+      "error": "failed_tile 114844/51960: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114848-Y51960",
+      "error": "failed_tile 114848/51960: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114852-Y51960",
+      "error": "failed_tile 114852/51960: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114856-Y51960",
+      "error": "failed_tile 114856/51960: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114860-Y51960",
+      "error": "failed_tile 114860/51960: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114864-Y51960",
+      "error": "failed_tile 114864/51960: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114844-Y51964",
+      "error": "failed_tile 114844/51964: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114848-Y51964",
+      "error": "failed_tile 114848/51964: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114852-Y51964",
+      "error": "failed_tile 114852/51964: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114856-Y51964",
+      "error": "failed_tile 114856/51964: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114860-Y51964",
+      "error": "failed_tile 114860/51964: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114864-Y51964",
+      "error": "failed_tile 114864/51964: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114844-Y51968",
+      "error": "failed_tile 114844/51968: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114848-Y51968",
+      "error": "failed_tile 114848/51968: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114852-Y51968",
+      "error": "failed_tile 114852/51968: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114856-Y51968",
+      "error": "failed_tile 114856/51968: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114860-Y51968",
+      "error": "failed_tile 114860/51968: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114864-Y51968",
+      "error": "failed_tile 114864/51968: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114868-Y51968",
+      "error": "failed_tile 114868/51968: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114872-Y51968",
+      "error": "failed_tile 114872/51968: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114876-Y51968",
+      "error": "failed_tile 114876/51968: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114844-Y51972",
+      "error": "failed_tile 114844/51972: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114848-Y51972",
+      "error": "failed_tile 114848/51972: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114852-Y51972",
+      "error": "failed_tile 114852/51972: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114856-Y51972",
+      "error": "failed_tile 114856/51972: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114860-Y51972",
+      "error": "failed_tile 114860/51972: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114864-Y51972",
+      "error": "failed_tile 114864/51972: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114868-Y51972",
+      "error": "failed_tile 114868/51972: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114872-Y51972",
+      "error": "failed_tile 114872/51972: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114876-Y51972",
+      "error": "failed_tile 114876/51972: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114848-Y51976",
+      "error": "failed_tile 114848/51976: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114852-Y51976",
+      "error": "failed_tile 114852/51976: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114856-Y51976",
+      "error": "failed_tile 114856/51976: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114860-Y51976",
+      "error": "failed_tile 114860/51976: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114864-Y51976",
+      "error": "failed_tile 114864/51976: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114868-Y51976",
+      "error": "failed_tile 114868/51976: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114872-Y51976",
+      "error": "failed_tile 114872/51976: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114876-Y51976",
+      "error": "failed_tile 114876/51976: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114852-Y51980",
+      "error": "failed_tile 114852/51980: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114856-Y51980",
+      "error": "failed_tile 114856/51980: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114860-Y51980",
+      "error": "failed_tile 114860/51980: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114864-Y51980",
+      "error": "failed_tile 114864/51980: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114868-Y51980",
+      "error": "failed_tile 114868/51980: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114872-Y51980",
+      "error": "failed_tile 114872/51980: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114876-Y51980",
+      "error": "failed_tile 114876/51980: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114880-Y51980",
+      "error": "failed_tile 114880/51980: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114848-Y51984",
+      "error": "failed_tile 114848/51984: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114852-Y51984",
+      "error": "failed_tile 114852/51984: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114856-Y51984",
+      "error": "failed_tile 114856/51984: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114860-Y51984",
+      "error": "failed_tile 114860/51984: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114864-Y51984",
+      "error": "failed_tile 114864/51984: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114868-Y51984",
+      "error": "failed_tile 114868/51984: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114872-Y51984",
+      "error": "failed_tile 114872/51984: HTTP 404 or invalid image"
+    },
+    {
+      "scan_cell_id": "OHG-Z17-X114876-Y51984",
+      "error": "failed_tile 114876/51984: HTTP 404 or invalid image"
+    }
+  ],
+  "audit_jpg": "data/ohg/audit/OHG_acquisition_overview_z17_lowres.jpg",
+  "audit_png": "data/ohg/audit/OHG_acquisition_overview_z17.png",
+  "next_action": "automatic hourly schedule will continue; manual run is optional if schedule delay is observed."
+}
