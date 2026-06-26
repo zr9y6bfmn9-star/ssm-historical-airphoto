@@ -1,0 +1,511 @@
+name: OHG coverage audit v2.1
+
+on:
+  workflow_dispatch:
+    inputs:
+      max_cells:
+        description: "Coverage cells per run (1-72; default 48)"
+        required: false
+        default: "48"
+        type: string
+      automation_action:
+        description: "no_change | enable | disable"
+        required: false
+        default: "no_change"
+        type: choice
+        options: [no_change, enable, disable]
+  schedule:
+    - cron: "17 */2 * * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ohg-coverage-audit-v2-1
+  cancel-in-progress: false
+
+jobs:
+  coverage-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+
+    steps:
+      - name: Checkout latest main
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install runtime package
+        run: python -m pip install --upgrade pip && pip install requests pillow
+
+      - name: Audit a bounded coverage batch; do not save source imagery
+        env:
+          MAX_CELLS: ${{ inputs.max_cells || '48' }}
+          AUTOMATION_ACTION: ${{ inputs.automation_action || 'no_change' }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          cat > /tmp/ohg_coverage_audit_v2_1.py <<'PY'
+          #!/usr/bin/env python3
+          """OHG v2.1: resumable, metadata-only coverage audit.
+
+          This controller deliberately does not persist imagery.  It classifies source
+          availability per planned z17 scan cell, records only URL/status/hash metadata,
+          and prepares a candidate-only high-resolution request ledger with no image data.
+          """
+          from __future__ import annotations
+
+          import csv
+          import hashlib
+          import io
+          import json
+          import os
+          import time
+          from datetime import datetime, timezone
+          from pathlib import Path
+          from typing import Dict, List, Tuple
+
+          import requests
+          from PIL import Image, ImageDraw, ImageFont
+
+          ROOT = Path("data/ohg")
+          CONTROL = ROOT / "control"
+          AUDIT = ROOT / "audit"
+          HIGHRES = ROOT / "highres"
+
+          CELL_PLAN = CONTROL / "OHG_scan_cell_ledger_z17.csv"
+          SCOPE_REGISTRY = CONTROL / "OHG_scope_registry_operational_v1.csv"
+          CELL_LEDGER = CONTROL / "OHG_cell_coverage_ledger_z17_v2_1.csv"
+          TILE_LEDGER = CONTROL / "OHG_tile_coverage_ledger_z17_v2_1.csv"
+          STATE_PATH = CONTROL / "OHG_coverage_audit_state_v2_1.json"
+          REPORT_PATH = CONTROL / "OHG_coverage_audit_report_v2_1.json"
+          CAPACITY_PATH = CONTROL / "OHG_preview_capacity_preflight_v2_1.json"
+
+          Z = 17
+          CELL_TILES = 4
+          SOURCE_LAYER = "ort_riku10"
+          SOURCE_NAME = "国土地理院 地理院タイル 空中写真（1936年〜1942年頃） ort_riku10"
+          SOURCE_TEMPLATE = "https://cyberjapandata.gsi.go.jp/xyz/ort_riku10/{z}/{x}/{y}.png"
+          REQUEST_CONNECT_TIMEOUT_SECONDS = 3.05
+          REQUEST_READ_TIMEOUT_SECONDS = 6
+          REQUEST_DELAY_SECONDS = 0.10
+          HARD_DEADLINE_SECONDS = 660
+          MAX_TRANSIENT_ATTEMPTS = 3
+          CHECKPOINT_EVERY_CELLS = 4
+
+          # Capacity design only. This workflow stores no previews.
+          PLANNED_PREVIEW_MAX_BYTES = 160 * 1024
+          PLANNED_PREVIEW_BUDGET_BYTES = 220 * 1024 * 1024
+
+          CELL_FIELDS = [
+              "scan_cell_id", "z", "x0", "y0", "cell_tiles", "bbox_wgs84",
+              "scope_unit_codes", "scope_unit_count", "coverage_status",
+              "coverage_attempt_count", "coverage_checked_utc", "coverage_note",
+              "last_run_id"
+          ]
+          TILE_FIELDS = [
+              "scan_cell_id", "z", "x", "y", "tile_url", "http_status",
+              "tile_status", "response_sha256", "checked_utc", "attempt_count",
+              "failure_reason", "last_run_id"
+          ]
+          HIGHRES_FIELDS = [
+              "highres_request_id", "visual_lead_id", "scan_cell_id",
+              "requested_bbox_wgs84", "source_layer", "requested_zoom",
+              "requested_context_m", "request_reason", "request_status",
+              "archive_backend", "private_archive_locator", "package_sha256",
+              "source_tile_manifest_relpath", "created_utc", "completed_utc",
+              "publication_status", "notes"
+          ]
+
+          def utc_now() -> str:
+              return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+          def sha256_bytes(blob: bytes) -> str:
+              return hashlib.sha256(blob).hexdigest()
+
+          def read_csv(path: Path) -> List[dict]:
+              if not path.exists():
+                  return []
+              with path.open("r", encoding="utf-8-sig", newline="") as f:
+                  return list(csv.DictReader(f))
+
+          def write_csv(path: Path, rows: List[dict], fields: List[str]) -> None:
+              path.parent.mkdir(parents=True, exist_ok=True)
+              tmp = path.with_suffix(path.suffix + ".tmp")
+              with tmp.open("w", encoding="utf-8", newline="") as f:
+                  writer = csv.DictWriter(f, fieldnames=fields, extrasaction="ignore")
+                  writer.writeheader()
+                  for row in rows:
+                      writer.writerow({k: row.get(k, "") for k in fields})
+              tmp.replace(path)
+
+          def read_json(path: Path, default):
+              if not path.exists():
+                  return default
+              return json.loads(path.read_text(encoding="utf-8"))
+
+          def write_json(path: Path, payload) -> None:
+              path.parent.mkdir(parents=True, exist_ok=True)
+              tmp = path.with_suffix(path.suffix + ".tmp")
+              tmp.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+              tmp.replace(path)
+
+          def is_valid_256_png(blob: bytes) -> Tuple[bool, str]:
+              try:
+                  with Image.open(io.BytesIO(blob)) as im:
+                      if im.size != (256, 256):
+                          return False, f"unexpected_dimensions={im.size}"
+                      im.verify()
+                  return True, ""
+              except Exception as exc:
+                  return False, f"{type(exc).__name__}: {exc}"
+
+          def fetch_tile(session: requests.Session, x: int, y: int) -> dict:
+              url = SOURCE_TEMPLATE.format(z=Z, x=x, y=y)
+              now = utc_now()
+              try:
+                  response = session.get(
+                      url,
+                      timeout=(REQUEST_CONNECT_TIMEOUT_SECONDS, REQUEST_READ_TIMEOUT_SECONDS),
+                  )
+              except requests.RequestException as exc:
+                  return {
+                      "tile_url": url, "http_status": "", "tile_status": "transient_error",
+                      "response_sha256": "", "checked_utc": now,
+                      "failure_reason": f"{type(exc).__name__}: {exc}",
+                  }
+
+              if response.status_code == 404:
+                  return {
+                      "tile_url": url, "http_status": "404", "tile_status": "no_source_coverage",
+                      "response_sha256": "", "checked_utc": now, "failure_reason": "HTTP 404",
+                  }
+              if response.status_code != 200:
+                  return {
+                      "tile_url": url, "http_status": str(response.status_code), "tile_status": "transient_error",
+                      "response_sha256": "", "checked_utc": now,
+                      "failure_reason": f"HTTP {response.status_code}",
+                  }
+              ok, reason = is_valid_256_png(response.content)
+              if not ok:
+                  return {
+                      "tile_url": url, "http_status": "200", "tile_status": "transient_error",
+                      "response_sha256": "", "checked_utc": now,
+                      "failure_reason": f"invalid_image: {reason}",
+                  }
+              return {
+                  "tile_url": url, "http_status": "200", "tile_status": "available",
+                  "response_sha256": sha256_bytes(response.content), "checked_utc": now,
+                  "failure_reason": "",
+              }
+
+          def initial_cell_rows() -> List[dict]:
+              if not CELL_PLAN.exists():
+                  raise RuntimeError(
+                      "Missing data/ohg/control/OHG_scan_cell_ledger_z17.csv. "
+                      "v2.1 never recreates scope geometry; keep v1's geometry ledger frozen."
+                  )
+              plan_rows = read_csv(CELL_PLAN)
+              old = {r["scan_cell_id"]: r for r in read_csv(CELL_LEDGER) if r.get("scan_cell_id")}
+              rows = []
+              for src in plan_rows:
+                  cell_id = src["scan_cell_id"]
+                  prev = old.get(cell_id, {})
+                  rows.append({
+                      "scan_cell_id": cell_id,
+                      "z": str(src.get("z", Z)),
+                      "x0": str(src["x0"]),
+                      "y0": str(src["y0"]),
+                      "cell_tiles": str(src.get("cell_tiles", CELL_TILES)),
+                      "bbox_wgs84": src.get("bbox_wgs84", ""),
+                      "scope_unit_codes": src.get("scope_unit_codes", ""),
+                      "scope_unit_count": src.get("scope_unit_count", ""),
+                      "coverage_status": prev.get("coverage_status", "pending"),
+                      "coverage_attempt_count": prev.get("coverage_attempt_count", "0"),
+                      "coverage_checked_utc": prev.get("coverage_checked_utc", ""),
+                      "coverage_note": prev.get("coverage_note", ""),
+                      "last_run_id": prev.get("last_run_id", ""),
+                  })
+              return rows
+
+          def initialize_highres_metadata() -> None:
+              HIGHRES.mkdir(parents=True, exist_ok=True)
+              requests_path = HIGHRES / "OHG_highres_request_ledger_v1.csv"
+              if not requests_path.exists():
+                  write_csv(requests_path, [], HIGHRES_FIELDS)
+              policy_path = HIGHRES / "OHG_highres_archive_policy_v1.json"
+              if not policy_path.exists():
+                  write_json(policy_path, {
+                      "policy_version": "1.0",
+                      "purpose": "Candidate-only high-resolution image retrieval and preservation.",
+                      "public_repository_rule": "No raw source tiles, native-resolution mosaics, or candidate image packages are committed to this public repository.",
+                      "public_repository_contents": [
+                          "request ledger", "source URLs", "SHA256", "provenance metadata", "private archive locator"
+                      ],
+                      "archive_backend_status": "not_configured",
+                      "permanent_archive_options": [
+                          "separate private GitHub repository", "private external storage selected by the researcher"
+                      ],
+                      "approval_model": {
+                          "one_time_setup": "Select a private archive backend before the first high-resolution batch.",
+                          "batching": "Queue requests during visual review; acquire in batches of up to 20 candidates.",
+                          "recurring_confirmation": "No confirmation is required per candidate within an approved batch and budget."
+                      },
+                      "request_lifecycle": [
+                          "not_requested", "queued", "approved_batch", "retrieved", "archived", "verified", "blocked"
+                      ],
+                      "note": "This policy file contains no imagery and does not itself trigger high-resolution acquisition."
+                  })
+
+          def update_state(action: str) -> dict:
+              state = read_json(STATE_PATH, {
+                  "schema_version": "2.1",
+                  "automation_enabled": False,
+                  "phase": "coverage_audit",
+                  "created_utc": utc_now(),
+                  "last_run_utc": "",
+                  "last_message": "",
+              })
+              if action == "enable":
+                  state["automation_enabled"] = True
+              elif action == "disable":
+                  state["automation_enabled"] = False
+              return state
+
+          def classify(results: List[dict]) -> Tuple[str, str]:
+              statuses = [r["tile_status"] for r in results]
+              available = statuses.count("available")
+              absent = statuses.count("no_source_coverage")
+              transient = statuses.count("transient_error")
+              total = len(results)
+              if transient:
+                  return "transient_error", f"available={available}; no_source={absent}; transient={transient}; total={total}"
+              if available == total:
+                  return "coverage_full", f"available={available}/{total}"
+              if absent == total:
+                  return "no_source_coverage", f"no_source={absent}/{total}"
+              return "coverage_partial", f"available={available}; no_source={absent}; total={total}"
+
+          def write_checkpoint(rows: List[dict], tile_map: Dict[Tuple[str, str, str], dict]) -> None:
+              write_csv(CELL_LEDGER, rows, CELL_FIELDS)
+              tile_rows = []
+              for row in tile_map.values():
+                  tile_rows.append(row)
+              tile_rows.sort(key=lambda r: (r["scan_cell_id"], int(r["y"]), int(r["x"])))
+              write_csv(TILE_LEDGER, tile_rows, TILE_FIELDS)
+
+          def audit_batch(rows: List[dict], run_id: str, max_cells: int) -> Tuple[int, bool]:
+              eligible = []
+              for row in rows:
+                  attempts = int(row.get("coverage_attempt_count") or 0)
+                  if row["coverage_status"] == "pending":
+                      eligible.append(row)
+                  elif row["coverage_status"] == "transient_error" and attempts < MAX_TRANSIENT_ATTEMPTS:
+                      eligible.append(row)
+              eligible.sort(key=lambda r: (int(r["y0"]), int(r["x0"])))
+
+              old_tiles = {
+                  (r["scan_cell_id"], r["x"], r["y"]): r
+                  for r in read_csv(TILE_LEDGER)
+                  if r.get("scan_cell_id")
+              }
+              if not eligible:
+                  write_checkpoint(rows, old_tiles)
+                  return 0, False
+
+              deadline = time.monotonic() + HARD_DEADLINE_SECONDS
+              session = requests.Session()
+              session.headers.update({
+                  "User-Agent": "OHG-HistoricalAirphoto-Research/2.1 coverage-audit; metadata-only; attribution-retained"
+              })
+              processed = 0
+              deadline_reached = False
+
+              for row in eligible[:max_cells]:
+                  if time.monotonic() >= deadline:
+                      deadline_reached = True
+                      break
+                  x0, y0 = int(row["x0"]), int(row["y0"])
+                  results = []
+                  stop_after_cell = False
+                  for y in range(y0, y0 + CELL_TILES):
+                      for x in range(x0, x0 + CELL_TILES):
+                          result = fetch_tile(session, x, y)
+                          prior = old_tiles.get((row["scan_cell_id"], str(x), str(y)), {})
+                          result.update({
+                              "scan_cell_id": row["scan_cell_id"], "z": str(Z),
+                              "x": str(x), "y": str(y),
+                              "attempt_count": str(int(prior.get("attempt_count") or 0) + 1),
+                              "last_run_id": run_id,
+                          })
+                          old_tiles[(row["scan_cell_id"], str(x), str(y))] = result
+                          results.append(result)
+                          time.sleep(REQUEST_DELAY_SECONDS)
+                          if time.monotonic() >= deadline:
+                              stop_after_cell = True
+                              break
+                      if stop_after_cell:
+                          break
+
+                  # A partially probed cell is explicitly transient: never misclassify it.
+                  if len(results) != CELL_TILES * CELL_TILES:
+                      row["coverage_status"] = "transient_error"
+                      row["coverage_note"] = f"incomplete_probe={len(results)}/{CELL_TILES * CELL_TILES}; hard_deadline_reached"
+                      deadline_reached = True
+                  else:
+                      status, note = classify(results)
+                      row["coverage_status"] = status
+                      row["coverage_note"] = note
+                  row["coverage_attempt_count"] = str(int(row.get("coverage_attempt_count") or 0) + 1)
+                  row["coverage_checked_utc"] = utc_now()
+                  row["last_run_id"] = run_id
+                  processed += 1
+
+                  if processed % CHECKPOINT_EVERY_CELLS == 0 or deadline_reached:
+                      write_checkpoint(rows, old_tiles)
+                  if deadline_reached:
+                      break
+
+              write_checkpoint(rows, old_tiles)
+              return processed, deadline_reached
+
+          def make_overview(rows: List[dict]) -> None:
+              if not rows:
+                  return
+              xs = sorted({int(r["x0"]) for r in rows})
+              ys = sorted({int(r["y0"]) for r in rows})
+              x_index = {x: i for i, x in enumerate(xs)}
+              y_index = {y: i for i, y in enumerate(ys)}
+              cell_px = 14
+              pad = 16
+              header = 76
+              image = Image.new("RGB", (len(xs) * cell_px + pad * 2, len(ys) * cell_px + header + pad), "white")
+              draw = ImageDraw.Draw(image)
+              font = ImageFont.load_default()
+              draw.text((pad, 8), "OHG coverage audit v2.1 — metadata only; no source image is retained", fill="black", font=font)
+              draw.text((pad, 25), "black=full coverage; outline=partial; gray=no source; cross=transient; white=pending", fill="black", font=font)
+
+              counts: Dict[str, int] = {}
+              for row in rows:
+                  status = row["coverage_status"]
+                  counts[status] = counts.get(status, 0) + 1
+                  x = pad + x_index[int(row["x0"])] * cell_px
+                  y = header + y_index[int(row["y0"])] * cell_px
+                  if status == "coverage_full":
+                      draw.rectangle([x, y, x + cell_px, y + cell_px], fill="black")
+                  elif status == "coverage_partial":
+                      draw.rectangle([x, y, x + cell_px, y + cell_px], fill="white", outline="black", width=1)
+                  elif status == "no_source_coverage":
+                      draw.rectangle([x, y, x + cell_px, y + cell_px], fill="lightgray")
+                  elif status == "transient_error":
+                      draw.rectangle([x, y, x + cell_px, y + cell_px], fill="white", outline="gray", width=1)
+                      draw.line([x, y, x + cell_px, y + cell_px], fill="gray", width=1)
+                      draw.line([x + cell_px, y, x, y + cell_px], fill="gray", width=1)
+                  else:
+                      draw.rectangle([x, y, x + cell_px, y + cell_px], fill="white", outline="lightgray", width=1)
+
+              AUDIT.mkdir(parents=True, exist_ok=True)
+              image.save(AUDIT / "OHG_coverage_overview_v2_1_lowres.jpg", quality=72, optimize=True)
+              status_rows = [{"coverage_status": key, "cell_count": value} for key, value in sorted(counts.items())]
+              write_csv(AUDIT / "OHG_coverage_overview_v2_1_status.csv", status_rows, ["coverage_status", "cell_count"])
+
+          def main() -> None:
+              max_cells = max(1, min(72, int(os.environ.get("MAX_CELLS", "48") or "48")))
+              action = os.environ.get("AUTOMATION_ACTION", "no_change")
+              event_name = os.environ.get("EVENT_NAME", "workflow_dispatch")
+              run_id = os.environ.get("GITHUB_RUN_ID", "manual")
+
+              initialize_highres_metadata()
+              state = update_state(action)
+              if event_name == "schedule" and not state.get("automation_enabled", False):
+                  print(json.dumps({"status": "scheduled_run_skipped", "reason": "automation_disabled"}, ensure_ascii=False))
+                  return
+
+              rows = initial_cell_rows()
+              processed, deadline_reached = audit_batch(rows, run_id, max_cells)
+              make_overview(rows)
+
+              counts: Dict[str, int] = {}
+              for row in rows:
+                  counts[row["coverage_status"]] = counts.get(row["coverage_status"], 0) + 1
+              remaining = sum(
+                  1 for row in rows
+                  if row["coverage_status"] == "pending"
+                  or (row["coverage_status"] == "transient_error" and int(row.get("coverage_attempt_count") or 0) < MAX_TRANSIENT_ATTEMPTS)
+              )
+              eligible = counts.get("coverage_full", 0) + counts.get("coverage_partial", 0)
+              if remaining == 0:
+                  state["phase"] = "coverage_complete_awaiting_lightweight_decision"
+                  state["automation_enabled"] = False
+              else:
+                  state["phase"] = "coverage_audit"
+              state["last_run_utc"] = utc_now()
+              state["last_message"] = f"coverage_processed={processed}; remaining={remaining}; deadline_reached={deadline_reached}"
+              write_json(STATE_PATH, state)
+
+              scope_unit_count = len(read_csv(SCOPE_REGISTRY)) if SCOPE_REGISTRY.exists() else None
+              report = {
+                  "schema_version": "2.1",
+                  "generated_utc": utc_now(),
+                  "source_layer": SOURCE_LAYER,
+                  "source_name": SOURCE_NAME,
+                  "scan_cell_count": len(rows),
+                  "scope_unit_count_observed": scope_unit_count,
+                  "coverage_counts": counts,
+                  "coverage_cells_remaining": remaining,
+                  "coverage_eligible_cells": eligible,
+                  "processed_coverage_cells_this_run": processed,
+                  "hard_deadline_reached": deadline_reached,
+                  "automation_enabled_after_run": state["automation_enabled"],
+                  "phase": state["phase"],
+                  "imagery_storage": "none — this workflow retains only metadata, audit graphics, URL and SHA256 records",
+                  "source_404_policy": "no_source_coverage; never retried",
+                  "transient_retry_policy": f"retry at most {MAX_TRANSIENT_ATTEMPTS} times",
+                  "highres_request_ledger_relpath": "highres/OHG_highres_request_ledger_v1.csv",
+                  "highres_policy_relpath": "highres/OHG_highres_archive_policy_v1.json",
+              }
+              if scope_unit_count != 50:
+                  report["scope_registry_warning"] = "Expected 50 operational units; inspect the frozen v1 scope registry before interpreting final coverage."
+              write_json(REPORT_PATH, report)
+              write_json(CAPACITY_PATH, {
+                  "generated_utc": utc_now(),
+                  "coverage_eligible_cells": eligible,
+                  "planned_preview_max_bytes_per_cell": PLANNED_PREVIEW_MAX_BYTES,
+                  "planned_preview_total_budget_bytes": PLANNED_PREVIEW_BUDGET_BYTES,
+                  "conservative_preview_projection_bytes": eligible * PLANNED_PREVIEW_MAX_BYTES,
+                  "preview_storage_not_started": True,
+                  "decision_gate": "Do not save lightweight previews until coverage audit is complete and this preflight is reviewed.",
+                  "highres_images_policy": "Candidate-only; separate private archive backend must be configured once before first batch."
+              })
+              print(json.dumps(report, ensure_ascii=False, indent=2))
+
+          if __name__ == "__main__":
+              main()
+          PY
+          python /tmp/ohg_coverage_audit_v2_1.py
+
+      - name: Commit coverage outputs safely
+        run: |
+          git config user.name "ohg-research-bot"
+          git config user.email "ohg-research-bot@users.noreply.github.com"
+          git add data/ohg/
+          if git diff --cached --quiet; then
+            echo "No output changes to commit."
+            exit 0
+          fi
+          git commit -m "ohg: coverage audit v2.1 checkpoint"
+          for attempt in 1 2 3; do
+            git fetch origin main
+            if git rebase origin/main && git push origin HEAD:main; then
+              echo "Committed and pushed."
+              exit 0
+            fi
+            git rebase --abort || true
+            sleep $((attempt * 3))
+          done
+          echo "Could not safely push after three attempts; remote history was not overwritten."
+          exit 1
