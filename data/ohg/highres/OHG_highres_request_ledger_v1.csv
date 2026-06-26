@@ -1,0 +1,1 @@
+highres_request_id,visual_lead_id,scan_cell_id,requested_bbox_wgs84,source_layer,requested_zoom,requested_context_m,request_reason,request_status,archive_backend,private_archive_locator,package_sha256,source_tile_manifest_relpath,created_utc,completed_utc,publication_status,notes

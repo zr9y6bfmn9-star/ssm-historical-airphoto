@@ -1,0 +1,10 @@
+{
+  "generated_utc": "2026-06-26T10:34:30Z",
+  "coverage_eligible_cells": 0,
+  "planned_preview_max_bytes_per_cell": 163840,
+  "planned_preview_total_budget_bytes": 230686720,
+  "conservative_preview_projection_bytes": 0,
+  "preview_storage_not_started": true,
+  "decision_gate": "Do not save lightweight previews until coverage audit is complete and this preflight is reviewed.",
+  "highres_images_policy": "Candidate-only; separate private archive backend must be configured once before first batch."
+}
