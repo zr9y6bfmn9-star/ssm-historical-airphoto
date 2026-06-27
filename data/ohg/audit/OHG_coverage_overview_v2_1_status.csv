@@ -1,3 +1,5 @@
 coverage_status,cell_count
-no_source_coverage,192
-pending,1230
+coverage_full,8
+coverage_partial,9
+no_source_coverage,223
+pending,1182
