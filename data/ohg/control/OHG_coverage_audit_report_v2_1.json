@@ -1,6 +1,6 @@
 {
   "schema_version": "2.1",
-  "generated_utc": "2026-06-27T20:29:02Z",
+  "generated_utc": "2026-06-28T09:58:07Z",
   "source_layer": "ort_riku10",
   "source_name": "国土地理院 地理院タイル 空中写真（1936年〜1942年頃） ort_riku10",
   "scan_cell_count": 1422,
@@ -8,11 +8,11 @@
   "coverage_counts": {
     "no_source_coverage": 223,
     "coverage_partial": 9,
-    "coverage_full": 56,
-    "pending": 1134
+    "coverage_full": 104,
+    "pending": 1086
   },
-  "coverage_cells_remaining": 1134,
-  "coverage_eligible_cells": 65,
+  "coverage_cells_remaining": 1086,
+  "coverage_eligible_cells": 113,
   "processed_coverage_cells_this_run": 48,
   "hard_deadline_reached": false,
   "automation_enabled_after_run": true,
