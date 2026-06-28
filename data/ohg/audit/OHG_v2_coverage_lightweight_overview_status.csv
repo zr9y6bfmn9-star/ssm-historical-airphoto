@@ -1,3 +1,5 @@
 coverage_status,preview_status,cell_count
-no_source_coverage,not_started,216
-pending,not_started,1206
+coverage_full,not_started,8
+coverage_partial,not_started,9
+no_source_coverage,not_started,223
+pending,not_started,1182
