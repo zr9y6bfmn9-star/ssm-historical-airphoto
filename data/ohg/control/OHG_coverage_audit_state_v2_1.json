@@ -1,8 +1,8 @@
 {
   "schema_version": "2.1",
-  "automation_enabled": true,
-  "phase": "coverage_audit",
+  "automation_enabled": false,
+  "phase": "coverage_complete_awaiting_lightweight_decision",
   "created_utc": "2026-06-26T10:28:45Z",
-  "last_run_utc": "2026-07-05T15:10:09Z",
-  "last_message": "coverage_processed=48; remaining=30; deadline_reached=False"
+  "last_run_utc": "2026-07-05T20:37:49Z",
+  "last_message": "coverage_processed=30; remaining=0; deadline_reached=False"
 }
