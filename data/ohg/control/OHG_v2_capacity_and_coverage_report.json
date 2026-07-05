@@ -1,26 +1,26 @@
 {
-  "generated_utc": "2026-07-05T15:06:00Z",
+  "generated_utc": "2026-07-05T18:56:07Z",
   "schema_version": "2.0",
   "source_layer": "ort_riku10",
   "source_name": "国土地理院 地理院タイル 空中写真（1936年〜1942年頃） ort_riku10",
   "scope_unit_count_observed": 50,
   "scan_cell_count": 1422,
   "coverage_counts": {
-    "no_source_coverage": 262,
-    "coverage_partial": 40,
-    "coverage_full": 490,
-    "pending": 630
+    "no_source_coverage": 267,
+    "coverage_partial": 42,
+    "coverage_full": 507,
+    "pending": 606
   },
   "preview_counts": {
     "not_started": 1422
   },
-  "coverage_cells_remaining": 630,
-  "coverage_eligible_cells": 530,
+  "coverage_cells_remaining": 606,
+  "coverage_eligible_cells": 549,
   "preview_max_bytes_per_cell": 184320,
   "preview_total_budget_bytes": 293601280,
   "preview_worktree_bytes": 0,
   "legacy_v1_mosaic_worktree_bytes": 69244123,
-  "conservative_preview_projection_bytes": 97689600,
+  "conservative_preview_projection_bytes": 101191680,
   "raw_source_tile_storage_policy": "not retained in normal Git history",
   "highres_policy_relpath": "highres/OHG_highres_archive_policy_v1.json",
   "highres_request_ledger_relpath": "highres/OHG_highres_request_ledger.csv",
