@@ -3,7 +3,7 @@
   "automation_enabled": true,
   "lightweight_approved": false,
   "created_utc": "2026-06-25T23:15:00Z",
-  "last_run_utc": "2026-07-08T16:25:21Z",
+  "last_run_utc": "2026-07-08T20:53:06Z",
   "phase": "coverage_audit",
   "last_message": "phase=coverage_audit; coverage_processed=24; previews_saved=0"
 }
