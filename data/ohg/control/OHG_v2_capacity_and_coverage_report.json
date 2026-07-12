@@ -1,5 +1,5 @@
 {
-  "generated_utc": "2026-07-12T20:09:28Z",
+  "generated_utc": "2026-07-12T22:34:08Z",
   "schema_version": "2.0",
   "source_layer": "ort_riku10",
   "source_name": "国土地理院 地理院タイル 空中写真（1936年〜1942年頃） ort_riku10",
@@ -25,8 +25,8 @@
   "highres_request_ledger_relpath": "highres/OHG_highres_request_ledger.csv",
   "automation_enabled": true,
   "lightweight_approved": false,
-  "phase": "coverage_audit",
-  "processed_coverage_cells_this_run": 6,
+  "phase": "await_lightweight_approval",
+  "processed_coverage_cells_this_run": 0,
   "saved_previews_this_run": 0,
   "saved_preview_bytes_this_run": 0,
   "note": "Coverage is tested before previews are saved. 404 results become no_source_coverage and are not retried; only transient_error is retried, up to the stated limit."
